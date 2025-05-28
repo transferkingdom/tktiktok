@@ -10,20 +10,24 @@ export async function GET(request: NextRequest) {
     console.log('Auth status check:', {
       hasAccessToken: !!accessToken,
       hasShopId: !!shopId,
-      tokenValue: accessToken?.substring(0, 10) + '...' || 'none'
+      tokenValue: accessToken?.substring(0, 15) + '...' || 'none',
+      allCookies: cookieStore.getAll().map(c => c.name)
     })
 
-    if (accessToken && (accessToken !== 'shop_authorized' || shopId)) {
+    // Herhangi bir access token varsa authorized say
+    if (accessToken) {
       return NextResponse.json({
         authorized: true,
         shop_id: shopId,
-        token_type: accessToken === 'shop_authorized' ? 'dummy' : 'real'
+        token_type: accessToken.includes('shop_authorized') ? 'shop' : 'oauth',
+        token_preview: accessToken.substring(0, 15) + '...'
       })
     }
 
     return NextResponse.json({
       authorized: false,
-      reason: 'No valid access token found'
+      reason: 'No access token found',
+      available_cookies: cookieStore.getAll().map(c => c.name)
     })
   } catch (error) {
     console.error('Error checking auth status:', error)

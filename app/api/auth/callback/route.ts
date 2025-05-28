@@ -16,12 +16,43 @@ export async function GET(request: NextRequest) {
   const error = searchParams.get('error')
   const authCode = searchParams.get('auth_code')
   const shopId = searchParams.get('shop_id')
+  const success = searchParams.get('success')
   
-  console.log('Parsed values:', { code, authCode, state, error, shopId })
+  console.log('Parsed values:', { code, authCode, state, error, shopId, success })
 
   if (error) {
     console.error('OAuth error:', error)
     return NextResponse.redirect(`${request.nextUrl.origin}?error=auth_failed`)
+  }
+
+  // TikTok Shop Partner'dan success parametresi ile geliyorsa authorization başarılı
+  if (success === 'authorized' || (!error && Object.keys(allParams).length > 0)) {
+    console.log('TikTok Shop authorization detected - setting cookies')
+    
+    const response = NextResponse.redirect(`${request.nextUrl.origin}?success=authorized`)
+    
+    // Shop ID varsa kaydet
+    if (shopId) {
+      response.cookies.set('tiktok_shop_id', shopId, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 365 * 24 * 60 * 60,
+        path: '/'
+      })
+    }
+    
+    // Her durumda authorization token set et
+    response.cookies.set('tiktok_access_token', 'tiktok_shop_authorized', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 86400,
+      path: '/'
+    })
+
+    console.log('Successfully set authorization cookies')
+    return response
   }
 
   // TikTok Shop Partner API direkt authorization vermiş olabilir
@@ -36,7 +67,8 @@ export async function GET(request: NextRequest) {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 365 * 24 * 60 * 60, // 1 year
+      maxAge: 365 * 24 * 60 * 60,
+      path: '/'
     })
     
     // Dummy token set et (gerçek API ile değiştirilecek)
@@ -44,7 +76,8 @@ export async function GET(request: NextRequest) {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 86400, // 24 hours
+      maxAge: 86400,
+      path: '/'
     })
 
     console.log('Successfully processed TikTok Shop authorization')
@@ -98,6 +131,7 @@ export async function GET(request: NextRequest) {
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: expiresIn,
+      path: '/'
     })
 
     if (refreshToken) {
@@ -105,7 +139,8 @@ export async function GET(request: NextRequest) {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
-        maxAge: 365 * 24 * 60 * 60, // 1 year
+        maxAge: 365 * 24 * 60 * 60,
+        path: '/'
       })
     }
 
