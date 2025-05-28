@@ -26,8 +26,31 @@ export default function Home() {
   useEffect(() => {
     // Check if user is already authorized by looking for success parameter
     const urlParams = new URLSearchParams(window.location.search)
+    
+    // Tüm URL parametrelerini logla
+    console.log('=== Frontend URL Parameters ===')
+    urlParams.forEach((value, key) => {
+      console.log(`${key}: ${value}`)
+    })
+    
+    // Cookie'leri de kontrol et
+    console.log('=== Frontend Cookies ===')
+    console.log('All cookies:', document.cookie)
+    
     if (urlParams.get('success') === 'authorized') {
+      console.log('✅ Authorization success detected')
       setIsAuthorized(true)
+    } else {
+      console.log('❌ No authorization success parameter found')
+      
+      // Cookie'den token kontrolü yap
+      const hasToken = document.cookie.includes('tiktok_access_token')
+      console.log('Token in cookies:', hasToken)
+      
+      if (hasToken) {
+        console.log('✅ Token found in cookies, setting authorized')
+        setIsAuthorized(true)
+      }
     }
     
     // Debug bilgilerini göster
