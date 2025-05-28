@@ -22,6 +22,7 @@ export default function Home() {
   const [loading, setLoading] = useState<boolean>(false)
   const [products, setProducts] = useState<Product[]>([])
   const [priceRules, setPriceRules] = useState<PriceRule[]>([])
+  const [testLoading, setTestLoading] = useState<boolean>(false)
 
   useEffect(() => {
     // Check authorization status from server
@@ -128,6 +129,41 @@ export default function Home() {
     }
   }
 
+  const handleTestProduct = async () => {
+    setTestLoading(true)
+    try {
+      console.log('🧪 Testing product API for ID: 1731182926124651087')
+      
+      const response = await fetch('/api/test-product', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ productId: '1731182926124651087' }),
+      })
+      
+      const result = await response.json()
+      
+      console.log('🧪 Test product response:', result)
+      
+      if (response.ok) {
+        console.log('✅ Product API test successful!')
+        console.log('📦 Product details:', result.product)
+        console.log('🏷️ Variants:', result.variants)
+        
+        alert(`Product API test successful!\n\nProduct: ${result.product?.name || 'N/A'}\nVariants: ${result.variants?.length || 0}\n\nCheck console for full details.`)
+      } else {
+        console.error('❌ Product API test failed:', result)
+        alert(`Product API test failed: ${result.error}`)
+      }
+    } catch (error) {
+      console.error('💥 Error testing product API:', error)
+      alert('Error testing product API')
+    } finally {
+      setTestLoading(false)
+    }
+  }
+
   const addPriceRule = () => {
     setPriceRules([...priceRules, { variant: '', price: '' }])
   }
@@ -172,6 +208,21 @@ export default function Home() {
           </div>
         ) : (
           <div className="space-y-6">
+            {/* Test Button */}
+            <div className="card">
+              <h2 className="text-xl font-semibold mb-4">API Test</h2>
+              <p className="text-gray-600 mb-4">
+                Test if TikTok Shop API is working by fetching product details
+              </p>
+              <button
+                onClick={handleTestProduct}
+                disabled={testLoading}
+                className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {testLoading ? 'Testing API...' : 'Test Product API (ID: 1731182926124651087)'}
+              </button>
+            </div>
+
             <div className="card">
               <h2 className="text-xl font-semibold mb-4">Price Rules</h2>
               <p className="text-gray-600 mb-4">
