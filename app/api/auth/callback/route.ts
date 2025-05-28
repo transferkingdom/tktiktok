@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Exchange authorization code for access token
+    // TikTok Shop Partner API token exchange - normal TikTok OAuth endpoint kullanıyoruz
     const tokenResponse = await fetch('https://open.tiktokapis.com/v2/oauth/token/', {
       method: 'POST',
       headers: {
@@ -38,23 +38,26 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(`${request.nextUrl.origin}?error=token_failed`)
     }
 
-    // Store the access token securely (in production, use a database)
-    // For now, we'll redirect with success
+    // Store the access token securely
     const response = NextResponse.redirect(`${request.nextUrl.origin}?success=authorized`)
     
     // Set secure cookies with the tokens
-    response.cookies.set('tiktok_access_token', tokenData.access_token, {
+    const accessToken = tokenData.access_token
+    const refreshToken = tokenData.refresh_token
+    const expiresIn = tokenData.expires_in || 86400
+
+    response.cookies.set('tiktok_access_token', accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: tokenData.expires_in,
+      maxAge: expiresIn,
     })
 
-    response.cookies.set('tiktok_refresh_token', tokenData.refresh_token, {
+    response.cookies.set('tiktok_refresh_token', refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: tokenData.refresh_expires_in,
+      maxAge: 365 * 24 * 60 * 60, // 1 year
     })
 
     return response
