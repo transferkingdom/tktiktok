@@ -24,6 +24,7 @@ export default function Home() {
   const [priceRules, setPriceRules] = useState<PriceRule[]>([])
   const [testLoading, setTestLoading] = useState<boolean>(false)
   const [directTestLoading, setDirectTestLoading] = useState<boolean>(false)
+  const [sdkTestLoading, setSdkTestLoading] = useState<boolean>(false)
 
   useEffect(() => {
     // Check authorization status from server
@@ -202,6 +203,41 @@ export default function Home() {
     }
   }
 
+  const handleTestSDK = async () => {
+    setSdkTestLoading(true)
+    try {
+      console.log('🔧 Testing with official TikTok SDK')
+      
+      const response = await fetch('/api/test-sdk', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ productId: '1731182926124651087' }),
+      })
+      
+      const result = await response.json()
+      
+      console.log('🔧 SDK test response:', result)
+      
+      if (response.ok) {
+        console.log('✅ SDK test successful!')
+        console.log('📦 API Response:', result.response)
+        console.log('📋 Data:', result.response.data)
+        
+        alert(`SDK Test Successful!\n\nStatus: ${result.response.status}\nMessage: ${result.message}\n\nCheck console for full API response data.`)
+      } else {
+        console.error('❌ SDK test failed:', result)
+        alert(`SDK test failed: ${result.error?.message || result.error}`)
+      }
+    } catch (error) {
+      console.error('💥 Error testing SDK:', error)
+      alert('Error testing SDK')
+    } finally {
+      setSdkTestLoading(false)
+    }
+  }
+
   const addPriceRule = () => {
     setPriceRules([...priceRules, { variant: '', price: '' }])
   }
@@ -266,6 +302,13 @@ export default function Home() {
                   className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed w-full"
                 >
                   {directTestLoading ? 'Testing Direct Token...' : 'Test Direct Token (New: YW6gdQ...)'}
+                </button>
+                <button
+                  onClick={handleTestSDK}
+                  disabled={sdkTestLoading}
+                  className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed w-full bg-green-600 hover:bg-green-700"
+                >
+                  {sdkTestLoading ? 'Testing Official SDK...' : 'Test Official TikTok SDK (RECOMMENDED)'}
                 </button>
               </div>
               <p className="text-sm text-gray-500 mt-2">

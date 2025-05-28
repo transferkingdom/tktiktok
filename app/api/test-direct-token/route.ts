@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
+import axios from 'axios'
 
 interface ApiResult {
   name: string
@@ -8,7 +9,7 @@ interface ApiResult {
   status: number | string
   statusText?: string
   success: boolean
-  headers?: { [k: string]: string }
+  headers?: any
   data?: any
   text?: string
   error?: any
@@ -30,6 +31,19 @@ function generateSignature(appSecret: string, path: string, queryParams: any): s
   const signature = crypto.createHmac('sha256', appSecret).update(signString).digest('hex')
   
   return signature
+}
+
+// Test access token from user
+const ACCESS_TOKEN = 'YW6gdQAAAACtKWVciveiwOD9AsK-pgGH1oZ9kbhNDOq4uCcITr6npA'
+
+interface TestResult {
+  name: string
+  url: string
+  status: number | string
+  success: boolean
+  error?: string
+  data?: any
+  statusText?: string
 }
 
 export async function POST(request: NextRequest) {
@@ -90,7 +104,7 @@ export async function POST(request: NextRequest) {
     for (const baseUrl of baseUrls) {
       for (const endpoint of apiPaths) {
         try {
-          console.log(`\n🧪 Testing: ${baseUrl}${endpoint.path}`)
+          console.log(`\n🧪 Testing with Axios: ${baseUrl}${endpoint.path}`)
           
           // Generate signature
           const signature = generateSignature(appSecret, endpoint.path, endpoint.params)
@@ -110,67 +124,63 @@ export async function POST(request: NextRequest) {
           console.log(`URL: ${fullUrl}`)
           console.log(`Signature: ${signature}`)
           
-          const requestOptions: any = {
-            method: endpoint.method,
-            headers: headers
-          }
-
-          if (endpoint.body && endpoint.method === 'POST') {
-            requestOptions.body = JSON.stringify(endpoint.body)
-          }
-
-          const response = await fetch(fullUrl, requestOptions)
-          
-          console.log(`Response: ${response.status} ${response.statusText}`)
-          
-          const result: ApiResult = {
-            name: `${baseUrl} - ${endpoint.name}`,
-            url: fullUrl,
-            method: endpoint.method,
-            status: response.status,
-            statusText: response.statusText,
-            success: response.ok,
-            headers: Object.fromEntries(response.headers.entries())
-          }
-
-          if (response.ok) {
-            try {
-              const contentType = response.headers.get('content-type')
-              if (contentType && contentType.includes('application/json')) {
-                const data = await response.json()
-                console.log(`✅ Success:`, data)
-                result.data = data
-              } else {
-                const text = await response.text()
-                console.log(`✅ Success (text):`, text)
-                result.text = text
-              }
-            } catch (e) {
-              console.log(`✅ Success but failed to parse response:`, e)
-              result.text = 'Response received but could not parse'
+          try {
+            const response = await axios({
+              method: endpoint.method,
+              url: fullUrl,
+              headers: headers,
+              data: endpoint.body,
+              timeout: 10000
+            })
+            
+            console.log(`✅ Axios Success: ${response.status} ${response.statusText}`)
+            console.log('Response data:', response.data)
+            
+            const result: ApiResult = {
+              name: `${baseUrl} - ${endpoint.name}`,
+              url: fullUrl,
+              method: endpoint.method,
+              status: response.status,
+              statusText: response.statusText,
+              success: true,
+              headers: response.headers,
+              data: response.data
             }
-          } else {
-            try {
-              const contentType = response.headers.get('content-type')
-              if (contentType && contentType.includes('application/json')) {
-                const errorData = await response.json()
-                console.log(`❌ Error JSON:`, errorData)
-                result.error = errorData
-              } else {
-                const errorText = await response.text()
-                console.log(`❌ Error Text:`, errorText)
-                result.errorText = errorText
-              }
-            } catch (e) {
-              console.log(`❌ Error but failed to parse response:`, e)
-              result.errorText = 'Error response received but could not parse'
-            }
-          }
 
-          apiResults.push(result)
+            apiResults.push(result)
+
+          } catch (axiosError: any) {
+            console.error(`❌ Axios Error:`, axiosError.message)
+            
+            let errorStatus = 'NETWORK_ERROR'
+            let errorMessage = axiosError.message
+            let errorData = null
+            
+            if (axiosError.response) {
+              errorStatus = axiosError.response.status
+              errorMessage = axiosError.response.statusText || axiosError.message
+              errorData = axiosError.response.data
+              console.log(`Error response: ${errorStatus} ${errorMessage}`)
+              console.log('Error data:', errorData)
+            } else if (axiosError.request) {
+              console.log('No response received:', axiosError.request)
+            }
+            
+            const result: ApiResult = {
+              name: `${baseUrl} - ${endpoint.name}`,
+              url: fullUrl,
+              method: endpoint.method,
+              status: errorStatus,
+              statusText: errorMessage,
+              success: false,
+              error: errorData || axiosError.message
+            }
+
+            apiResults.push(result)
+          }
 
         } catch (error) {
-          console.error(`💥 Error testing ${baseUrl}:`, error)
+          console.error(`💥 Unexpected error testing ${baseUrl}:`, error)
           apiResults.push({
             name: `${baseUrl} - ${endpoint.name}`,
             url: 'ERROR',
@@ -190,7 +200,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Direct token test completed with signature',
+      message: 'Direct token test completed with axios',
       access_token: accessToken.substring(0, 10) + '...',
       shop_id: shopId,
       product_id: testProductId,
@@ -213,4 +223,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     )
   }
-} 
+}
