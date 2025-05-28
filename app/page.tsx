@@ -95,6 +95,8 @@ export default function Home() {
   const handlePriceUpdate = async () => {
     setLoading(true)
     try {
+      console.log('🚀 Starting price update with rules:', priceRules)
+      
       const response = await fetch('/api/update-prices', {
         method: 'POST',
         headers: {
@@ -105,13 +107,21 @@ export default function Home() {
       
       const result = await response.json()
       
+      console.log('📊 Price update response:', result)
+      
       if (response.ok) {
-        alert(`Prices updated successfully! Updated ${result.updated_count} variants.`)
+        console.log('✅ Update successful!')
+        console.log('📋 Debug info:', result.debug_info)
+        console.log('🎯 Updates:', result.updates)
+        console.log('📈 Summary:', result.summary)
+        
+        alert(`Prices updated successfully! Updated ${result.updated_count} variants.\n\nCheck console for detailed logs.`)
       } else {
+        console.error('❌ Update failed:', result)
         alert(`Failed to update prices: ${result.error}`)
       }
     } catch (error) {
-      console.error('Error updating prices:', error)
+      console.error('💥 Error updating prices:', error)
       alert('Error updating prices')
     } finally {
       setLoading(false)
