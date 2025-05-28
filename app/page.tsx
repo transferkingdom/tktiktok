@@ -24,43 +24,49 @@ export default function Home() {
   const [priceRules, setPriceRules] = useState<PriceRule[]>([])
 
   useEffect(() => {
-    // Check if user is already authorized by looking for success parameter
-    const urlParams = new URLSearchParams(window.location.search)
-    
-    // Tüm URL parametrelerini logla
-    console.log('=== Frontend URL Parameters ===')
-    urlParams.forEach((value, key) => {
-      console.log(`${key}: ${value}`)
-    })
-    
-    // Cookie'leri de kontrol et
-    console.log('=== Frontend Cookies ===')
-    console.log('All cookies:', document.cookie)
-    
-    if (urlParams.get('success') === 'authorized') {
-      console.log('✅ Authorization success detected')
-      setIsAuthorized(true)
-    } else {
-      console.log('❌ No authorization success parameter found')
-      
-      // Cookie'den token kontrolü yap
-      const hasToken = document.cookie.includes('tiktok_access_token')
-      console.log('Token in cookies:', hasToken)
-      
-      if (hasToken) {
-        console.log('✅ Token found in cookies, setting authorized')
-        setIsAuthorized(true)
+    // Check authorization status from server
+    const checkAuthStatus = async () => {
+      try {
+        const response = await fetch('/api/auth/status')
+        const data = await response.json()
+        console.log('Auth status check:', data)
+        
+        if (data.authorized) {
+          console.log('✅ User is authorized')
+          setIsAuthorized(true)
+        } else {
+          console.log('❌ User not authorized')
+          setIsAuthorized(false)
+        }
+      } catch (error) {
+        console.error('Error checking auth status:', error)
+        setIsAuthorized(false)
       }
     }
     
-    // Debug bilgilerini göster
-    const error = urlParams.get('error')
-    const debug = urlParams.get('debug')
-    const details = urlParams.get('details')
-    const message = urlParams.get('message')
+    // URL parametrelerini logla
+    const urlParams = new URLSearchParams(window.location.search)
+    console.log('=== Frontend URL Parameters ===')
+    urlParams.forEach((value: string, key: string) => {
+      console.log(`${key}: ${value}`)
+    })
     
+    // Eğer success parametresi varsa, biraz bekle ve auth status kontrol et
+    if (urlParams.get('success') === 'authorized') {
+      console.log('✅ Authorization redirect detected, checking status...')
+      setTimeout(checkAuthStatus, 1000) // 1 saniye bekle
+    } else {
+      checkAuthStatus()
+    }
+    
+    // Hata kontrolü
+    const error = urlParams.get('error')
     if (error) {
       console.log('Authorization error:', error)
+      const debug = urlParams.get('debug')
+      const details = urlParams.get('details')
+      const message = urlParams.get('message')
+      
       if (debug) {
         console.log('Debug info:', JSON.parse(decodeURIComponent(debug)))
       }
@@ -71,7 +77,6 @@ export default function Home() {
         console.log('Error message:', decodeURIComponent(message))
       }
       
-      // Kullanıcıya hata mesajını göster
       alert(`Authorization failed: ${error}\nCheck console for details.`)
     }
   }, [])
