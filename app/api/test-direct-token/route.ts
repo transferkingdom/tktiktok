@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import crypto from 'crypto'
 
 interface ApiResult {
   name: string
@@ -12,6 +13,23 @@ interface ApiResult {
   text?: string
   error?: any
   errorText?: string
+}
+
+// Generate TikTok Shop API signature
+function generateSignature(appSecret: string, path: string, queryParams: any): string {
+  // Sort parameters
+  const sortedParams = Object.keys(queryParams)
+    .sort()
+    .map(key => `${key}${queryParams[key]}`)
+    .join('')
+  
+  // Create sign string: app_secret + path + sorted_params + app_secret
+  const signString = appSecret + path + sortedParams + appSecret
+  
+  // Generate HMAC-SHA256 signature
+  const signature = crypto.createHmac('sha256', appSecret).update(signString).digest('hex')
+  
+  return signature
 }
 
 export async function POST(request: NextRequest) {
@@ -45,41 +63,66 @@ export async function POST(request: NextRequest) {
     // Generate timestamp for TikTok Shop API
     const timestamp = Math.floor(Date.now() / 1000).toString()
 
-    // Test multiple possible endpoints with correct authentication
+    // Test TikTok Shop Partner API endpoints with signature
     const endpoints = [
       {
-        name: 'TikTok Global Shop API v202309 - Products (GET)',
-        url: `https://open-api.tiktokglobalshop.com/product/202309/products?app_key=${appKey}&access_token=${accessToken}&shop_id=${shopId}&page_size=10&timestamp=${timestamp}`,
-        method: 'GET'
-      },
-      {
-        name: 'TikTok Global Shop API v202309 - Products (POST)',
-        url: `https://open-api.tiktokglobalshop.com/product/202309/products?app_key=${appKey}&access_token=${accessToken}&timestamp=${timestamp}`,
+        name: 'TikTok Shop Partner API - Get Products',
+        path: '/api/products/search',
         method: 'POST',
-        body: { shop_id: shopId, page_size: 10 }
+        params: {
+          app_key: appKey,
+          access_token: accessToken,
+          timestamp: timestamp,
+          shop_id: shopId
+        },
+        body: { page_size: 10 }
       },
       {
-        name: 'TikTok Shop API - Products Search',
-        url: `https://open-api.tiktokglobalshop.com/product/202309/products/search?app_key=${appKey}&access_token=${accessToken}&timestamp=${timestamp}`,
+        name: 'TikTok Shop Partner API - Product Details',
+        path: '/api/products/details',
         method: 'POST',
-        body: { shop_id: shopId, page_size: 10 }
+        params: {
+          app_key: appKey,
+          access_token: accessToken,
+          timestamp: timestamp,
+          shop_id: shopId
+        },
+        body: { product_ids: [testProductId] }
       },
       {
-        name: 'TikTok Global Shop API - Shop Info',
-        url: `https://open-api.tiktokglobalshop.com/shop/202309/shops?app_key=${appKey}&access_token=${accessToken}&shop_id=${shopId}&timestamp=${timestamp}`,
-        method: 'GET'
-      },
-      {
-        name: 'TikTok Shop API - Authorization Test',
-        url: `https://open-api.tiktokglobalshop.com/authorization/202309/token/get?app_key=${appKey}&access_token=${accessToken}&timestamp=${timestamp}`,
-        method: 'GET'
+        name: 'TikTok Shop Partner API - Shop Info',
+        path: '/api/shop/get_authorized_shop',
+        method: 'POST',
+        params: {
+          app_key: appKey,
+          access_token: accessToken,
+          timestamp: timestamp
+        },
+        body: {}
       }
     ]
 
     for (const endpoint of endpoints) {
       try {
         console.log(`\n🧪 Testing: ${endpoint.name}`)
-        console.log(`URL: ${endpoint.url}`)
+        
+        // Generate signature
+        const signature = generateSignature(appSecret, endpoint.path, endpoint.params)
+        
+        // Add signature to params
+        const fullParams = {
+          ...endpoint.params,
+          sign: signature
+        }
+        
+        // Build URL
+        const queryString = Object.entries(fullParams)
+          .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`)
+          .join('&')
+        const fullUrl = `https://open-api.tiktokshop.com${endpoint.path}?${queryString}`
+        
+        console.log(`URL: ${fullUrl}`)
+        console.log(`Signature: ${signature}`)
         
         const requestOptions: any = {
           method: endpoint.method,
@@ -90,13 +133,13 @@ export async function POST(request: NextRequest) {
           requestOptions.body = JSON.stringify(endpoint.body)
         }
 
-        const response = await fetch(endpoint.url, requestOptions)
+        const response = await fetch(fullUrl, requestOptions)
         
         console.log(`Response: ${response.status} ${response.statusText}`)
         
         const result: ApiResult = {
           name: endpoint.name,
-          url: endpoint.url,
+          url: fullUrl,
           method: endpoint.method,
           status: response.status,
           statusText: response.statusText,
@@ -144,7 +187,7 @@ export async function POST(request: NextRequest) {
         console.error(`💥 Error testing ${endpoint.name}:`, error)
         apiResults.push({
           name: endpoint.name,
-          url: endpoint.url,
+          url: 'ERROR',
           method: endpoint.method,
           status: 'ERROR',
           success: false,
@@ -160,7 +203,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Direct token test completed',
+      message: 'Direct token test completed with signature',
       access_token: accessToken.substring(0, 10) + '...',
       shop_id: shopId,
       product_id: testProductId,
