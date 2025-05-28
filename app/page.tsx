@@ -2,11 +2,34 @@
 
 import { useState, useEffect } from 'react'
 
+interface PriceRule {
+  variant: string
+  price: string
+}
+
+interface Product {
+  id: string
+  title: string
+  variants: Array<{
+    id: string
+    title: string
+    price: string
+  }>
+}
+
 export default function Home() {
-  const [isAuthorized, setIsAuthorized] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [products, setProducts] = useState([])
-  const [priceRules, setPriceRules] = useState([])
+  const [isAuthorized, setIsAuthorized] = useState<boolean>(false)
+  const [loading, setLoading] = useState<boolean>(false)
+  const [products, setProducts] = useState<Product[]>([])
+  const [priceRules, setPriceRules] = useState<PriceRule[]>([])
+
+  useEffect(() => {
+    // Check if user is already authorized by looking for success parameter
+    const urlParams = new URLSearchParams(window.location.search)
+    if (urlParams.get('success') === 'authorized') {
+      setIsAuthorized(true)
+    }
+  }, [])
 
   const handleAuthorize = () => {
     const clientKey = process.env.NEXT_PUBLIC_TIKTOK_CLIENT_KEY || 'YOUR_CLIENT_KEY'
@@ -29,10 +52,12 @@ export default function Home() {
         body: JSON.stringify({ priceRules }),
       })
       
+      const result = await response.json()
+      
       if (response.ok) {
-        alert('Prices updated successfully!')
+        alert(`Prices updated successfully! Updated ${result.updated_count} variants.`)
       } else {
-        alert('Failed to update prices')
+        alert(`Failed to update prices: ${result.error}`)
       }
     } catch (error) {
       console.error('Error updating prices:', error)
@@ -46,7 +71,7 @@ export default function Home() {
     setPriceRules([...priceRules, { variant: '', price: '' }])
   }
 
-  const updatePriceRule = (index: number, field: string, value: string) => {
+  const updatePriceRule = (index: number, field: keyof PriceRule, value: string) => {
     const newRules = [...priceRules]
     newRules[index] = { ...newRules[index], [field]: value }
     setPriceRules(newRules)
@@ -93,7 +118,7 @@ export default function Home() {
               </p>
               
               <div className="space-y-4">
-                {priceRules.map((rule: any, index: number) => (
+                {priceRules.map((rule, index) => (
                   <div key={index} className="flex gap-4 items-center">
                     <input
                       type="text"
@@ -104,6 +129,7 @@ export default function Home() {
                     />
                     <input
                       type="number"
+                      step="0.01"
                       placeholder="Price"
                       value={rule.price}
                       onChange={(e) => updatePriceRule(index, 'price', e.target.value)}
