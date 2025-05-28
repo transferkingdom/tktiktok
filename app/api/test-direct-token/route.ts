@@ -42,33 +42,36 @@ export async function POST(request: NextRequest) {
 
     let apiResults: ApiResult[] = []
 
+    // Generate timestamp for TikTok Shop API
+    const timestamp = Math.floor(Date.now() / 1000).toString()
+
     // Test multiple possible endpoints with correct authentication
     const endpoints = [
       {
-        name: 'TikTok Global Shop API v202309 - Product List (GET)',
-        url: `https://open-api.tiktokglobalshop.com/product/202309/products?app_key=${appKey}&access_token=${accessToken}&shop_id=${shopId}&page_size=10`,
+        name: 'TikTok Global Shop API v202309 - Products (GET)',
+        url: `https://open-api.tiktokglobalshop.com/product/202309/products?app_key=${appKey}&access_token=${accessToken}&shop_id=${shopId}&page_size=10&timestamp=${timestamp}`,
         method: 'GET'
       },
       {
-        name: 'TikTok Global Shop API v202309 - Product Details (GET)',
-        url: `https://open-api.tiktokglobalshop.com/product/202309/products/${testProductId}?app_key=${appKey}&access_token=${accessToken}&shop_id=${shopId}`,
-        method: 'GET'
-      },
-      {
-        name: 'TikTok Global Shop API v202309 - Product List (POST with body)',
-        url: `https://open-api.tiktokglobalshop.com/product/202309/products?app_key=${appKey}&access_token=${accessToken}`,
+        name: 'TikTok Global Shop API v202309 - Products (POST)',
+        url: `https://open-api.tiktokglobalshop.com/product/202309/products?app_key=${appKey}&access_token=${accessToken}&timestamp=${timestamp}`,
         method: 'POST',
         body: { shop_id: shopId, page_size: 10 }
       },
       {
-        name: 'TikTok Shop API - Search Products',
-        url: `https://open-api.tiktokglobalshop.com/product/202309/products/search?app_key=${appKey}&access_token=${accessToken}`,
+        name: 'TikTok Shop API - Products Search',
+        url: `https://open-api.tiktokglobalshop.com/product/202309/products/search?app_key=${appKey}&access_token=${accessToken}&timestamp=${timestamp}`,
         method: 'POST',
-        body: { shop_id: shopId, page_size: 10, keyword: '' }
+        body: { shop_id: shopId, page_size: 10 }
       },
       {
         name: 'TikTok Global Shop API - Shop Info',
-        url: `https://open-api.tiktokglobalshop.com/shop/202309/shops?app_key=${appKey}&access_token=${accessToken}&shop_id=${shopId}`,
+        url: `https://open-api.tiktokglobalshop.com/shop/202309/shops?app_key=${appKey}&access_token=${accessToken}&shop_id=${shopId}&timestamp=${timestamp}`,
+        method: 'GET'
+      },
+      {
+        name: 'TikTok Shop API - Authorization Test',
+        url: `https://open-api.tiktokglobalshop.com/authorization/202309/token/get?app_key=${appKey}&access_token=${accessToken}&timestamp=${timestamp}`,
         method: 'GET'
       }
     ]
@@ -103,23 +106,35 @@ export async function POST(request: NextRequest) {
 
         if (response.ok) {
           try {
-            const data = await response.json()
-            console.log(`✅ Success:`, data)
-            result.data = data
+            const contentType = response.headers.get('content-type')
+            if (contentType && contentType.includes('application/json')) {
+              const data = await response.json()
+              console.log(`✅ Success:`, data)
+              result.data = data
+            } else {
+              const text = await response.text()
+              console.log(`✅ Success (text):`, text)
+              result.text = text
+            }
           } catch (e) {
-            const text = await response.text()
-            console.log(`✅ Success (text):`, text)
-            result.text = text
+            console.log(`✅ Success but failed to parse response:`, e)
+            result.text = 'Response received but could not parse'
           }
         } else {
           try {
-            const errorData = await response.json()
-            console.log(`❌ Error JSON:`, errorData)
-            result.error = errorData
+            const contentType = response.headers.get('content-type')
+            if (contentType && contentType.includes('application/json')) {
+              const errorData = await response.json()
+              console.log(`❌ Error JSON:`, errorData)
+              result.error = errorData
+            } else {
+              const errorText = await response.text()
+              console.log(`❌ Error Text:`, errorText)
+              result.errorText = errorText
+            }
           } catch (e) {
-            const errorText = await response.text()
-            console.log(`❌ Error Text:`, errorText)
-            result.errorText = errorText
+            console.log(`❌ Error but failed to parse response:`, e)
+            result.errorText = 'Error response received but could not parse'
           }
         }
 
