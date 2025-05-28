@@ -64,9 +64,17 @@ export async function POST(request: NextRequest) {
     const timestamp = Math.floor(Date.now() / 1000).toString()
 
     // Test TikTok Shop Partner API endpoints with signature
-    const endpoints = [
+    const baseUrls = [
+      'https://open-api.tiktokshop.com',
+      'https://open-api.tiktokglobalshop.com', 
+      'https://partner-api.tiktokshop.com',
+      'https://api.tiktokshop.com',
+      'https://open.tiktokshop.com'
+    ]
+
+    const apiPaths = [
       {
-        name: 'TikTok Shop Partner API - Get Products',
+        name: 'Products Search',
         path: '/api/products/search',
         method: 'POST',
         params: {
@@ -76,123 +84,102 @@ export async function POST(request: NextRequest) {
           shop_id: shopId
         },
         body: { page_size: 10 }
-      },
-      {
-        name: 'TikTok Shop Partner API - Product Details',
-        path: '/api/products/details',
-        method: 'POST',
-        params: {
-          app_key: appKey,
-          access_token: accessToken,
-          timestamp: timestamp,
-          shop_id: shopId
-        },
-        body: { product_ids: [testProductId] }
-      },
-      {
-        name: 'TikTok Shop Partner API - Shop Info',
-        path: '/api/shop/get_authorized_shop',
-        method: 'POST',
-        params: {
-          app_key: appKey,
-          access_token: accessToken,
-          timestamp: timestamp
-        },
-        body: {}
       }
     ]
 
-    for (const endpoint of endpoints) {
-      try {
-        console.log(`\n🧪 Testing: ${endpoint.name}`)
-        
-        // Generate signature
-        const signature = generateSignature(appSecret, endpoint.path, endpoint.params)
-        
-        // Add signature to params
-        const fullParams = {
-          ...endpoint.params,
-          sign: signature
-        }
-        
-        // Build URL
-        const queryString = Object.entries(fullParams)
-          .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`)
-          .join('&')
-        const fullUrl = `https://open-api.tiktokshop.com${endpoint.path}?${queryString}`
-        
-        console.log(`URL: ${fullUrl}`)
-        console.log(`Signature: ${signature}`)
-        
-        const requestOptions: any = {
-          method: endpoint.method,
-          headers: headers
-        }
-
-        if (endpoint.body && endpoint.method === 'POST') {
-          requestOptions.body = JSON.stringify(endpoint.body)
-        }
-
-        const response = await fetch(fullUrl, requestOptions)
-        
-        console.log(`Response: ${response.status} ${response.statusText}`)
-        
-        const result: ApiResult = {
-          name: endpoint.name,
-          url: fullUrl,
-          method: endpoint.method,
-          status: response.status,
-          statusText: response.statusText,
-          success: response.ok,
-          headers: Object.fromEntries(response.headers.entries())
-        }
-
-        if (response.ok) {
-          try {
-            const contentType = response.headers.get('content-type')
-            if (contentType && contentType.includes('application/json')) {
-              const data = await response.json()
-              console.log(`✅ Success:`, data)
-              result.data = data
-            } else {
-              const text = await response.text()
-              console.log(`✅ Success (text):`, text)
-              result.text = text
-            }
-          } catch (e) {
-            console.log(`✅ Success but failed to parse response:`, e)
-            result.text = 'Response received but could not parse'
+    for (const baseUrl of baseUrls) {
+      for (const endpoint of apiPaths) {
+        try {
+          console.log(`\n🧪 Testing: ${baseUrl}${endpoint.path}`)
+          
+          // Generate signature
+          const signature = generateSignature(appSecret, endpoint.path, endpoint.params)
+          
+          // Add signature to params
+          const fullParams = {
+            ...endpoint.params,
+            sign: signature
           }
-        } else {
-          try {
-            const contentType = response.headers.get('content-type')
-            if (contentType && contentType.includes('application/json')) {
-              const errorData = await response.json()
-              console.log(`❌ Error JSON:`, errorData)
-              result.error = errorData
-            } else {
-              const errorText = await response.text()
-              console.log(`❌ Error Text:`, errorText)
-              result.errorText = errorText
-            }
-          } catch (e) {
-            console.log(`❌ Error but failed to parse response:`, e)
-            result.errorText = 'Error response received but could not parse'
+          
+          // Build URL
+          const queryString = Object.entries(fullParams)
+            .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`)
+            .join('&')
+          const fullUrl = `${baseUrl}${endpoint.path}?${queryString}`
+          
+          console.log(`URL: ${fullUrl}`)
+          console.log(`Signature: ${signature}`)
+          
+          const requestOptions: any = {
+            method: endpoint.method,
+            headers: headers
           }
+
+          if (endpoint.body && endpoint.method === 'POST') {
+            requestOptions.body = JSON.stringify(endpoint.body)
+          }
+
+          const response = await fetch(fullUrl, requestOptions)
+          
+          console.log(`Response: ${response.status} ${response.statusText}`)
+          
+          const result: ApiResult = {
+            name: `${baseUrl} - ${endpoint.name}`,
+            url: fullUrl,
+            method: endpoint.method,
+            status: response.status,
+            statusText: response.statusText,
+            success: response.ok,
+            headers: Object.fromEntries(response.headers.entries())
+          }
+
+          if (response.ok) {
+            try {
+              const contentType = response.headers.get('content-type')
+              if (contentType && contentType.includes('application/json')) {
+                const data = await response.json()
+                console.log(`✅ Success:`, data)
+                result.data = data
+              } else {
+                const text = await response.text()
+                console.log(`✅ Success (text):`, text)
+                result.text = text
+              }
+            } catch (e) {
+              console.log(`✅ Success but failed to parse response:`, e)
+              result.text = 'Response received but could not parse'
+            }
+          } else {
+            try {
+              const contentType = response.headers.get('content-type')
+              if (contentType && contentType.includes('application/json')) {
+                const errorData = await response.json()
+                console.log(`❌ Error JSON:`, errorData)
+                result.error = errorData
+              } else {
+                const errorText = await response.text()
+                console.log(`❌ Error Text:`, errorText)
+                result.errorText = errorText
+              }
+            } catch (e) {
+              console.log(`❌ Error but failed to parse response:`, e)
+              result.errorText = 'Error response received but could not parse'
+            }
+          }
+
+          apiResults.push(result)
+
+        } catch (error) {
+          console.error(`💥 Error testing ${baseUrl}:`, error)
+          apiResults.push({
+            name: `${baseUrl} - ${endpoint.name}`,
+            url: 'ERROR',
+            method: endpoint.method,
+            status: 'ERROR',
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error'
+          })
         }
-
-        apiResults.push(result)
-
-      } catch (error) {
-        console.error(`💥 Error testing ${endpoint.name}:`, error)
-        apiResults.push({
-          name: endpoint.name,
-          url: 'ERROR',
-          method: endpoint.method,
-          status: 'ERROR',
-          success: false,
-          error: error instanceof Error ? error.message : 'Unknown error'
-        })
       }
     }
 
