@@ -29,6 +29,28 @@ export default function Home() {
     if (urlParams.get('success') === 'authorized') {
       setIsAuthorized(true)
     }
+    
+    // Debug bilgilerini göster
+    const error = urlParams.get('error')
+    const debug = urlParams.get('debug')
+    const details = urlParams.get('details')
+    const message = urlParams.get('message')
+    
+    if (error) {
+      console.log('Authorization error:', error)
+      if (debug) {
+        console.log('Debug info:', JSON.parse(decodeURIComponent(debug)))
+      }
+      if (details) {
+        console.log('Error details:', JSON.parse(decodeURIComponent(details)))
+      }
+      if (message) {
+        console.log('Error message:', decodeURIComponent(message))
+      }
+      
+      // Kullanıcıya hata mesajını göster
+      alert(`Authorization failed: ${error}\nCheck console for details.`)
+    }
   }, [])
 
   const handleAuthorize = () => {

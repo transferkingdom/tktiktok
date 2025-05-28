@@ -2,20 +2,38 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
+  
+  // Tüm parametreleri debug için logla
+  console.log('=== TikTok Shop Callback Debug ===')
+  const allParams: Record<string, string> = {}
+  searchParams.forEach((value, key) => {
+    allParams[key] = value
+    console.log(`${key}: ${value}`)
+  })
+  
   const code = searchParams.get('code')
   const state = searchParams.get('state')
   const error = searchParams.get('error')
+  const authCode = searchParams.get('auth_code') // TikTok Shop muhtemelen bu kullanır
+  const shopId = searchParams.get('shop_id')
+  
+  console.log('Parsed values:', { code, authCode, state, error, shopId })
 
   if (error) {
     console.error('OAuth error:', error)
     return NextResponse.redirect(`${request.nextUrl.origin}?error=auth_failed`)
   }
 
-  if (!code) {
-    return NextResponse.redirect(`${request.nextUrl.origin}?error=no_code`)
+  // Code veya auth_code var mı kontrol et
+  const authorizationCode = code || authCode
+  if (!authorizationCode) {
+    console.error('No authorization code found')
+    return NextResponse.redirect(`${request.nextUrl.origin}?error=no_code&debug=${encodeURIComponent(JSON.stringify(allParams))}`)
   }
 
   try {
+    console.log('Attempting token exchange with code:', authorizationCode)
+    
     // TikTok Shop Partner API token exchange - normal TikTok OAuth endpoint kullanıyoruz
     const tokenResponse = await fetch('https://open.tiktokapis.com/v2/oauth/token/', {
       method: 'POST',
@@ -25,17 +43,19 @@ export async function GET(request: NextRequest) {
       body: new URLSearchParams({
         client_key: process.env.TIKTOK_CLIENT_KEY!,
         client_secret: process.env.TIKTOK_CLIENT_SECRET!,
-        code: code,
+        code: authorizationCode,
         grant_type: 'authorization_code',
         redirect_uri: process.env.TIKTOK_REDIRECT_URI!,
       }),
     })
 
     const tokenData = await tokenResponse.json()
+    console.log('Token response status:', tokenResponse.status)
+    console.log('Token response:', tokenData)
 
     if (!tokenResponse.ok) {
       console.error('Token exchange failed:', tokenData)
-      return NextResponse.redirect(`${request.nextUrl.origin}?error=token_failed`)
+      return NextResponse.redirect(`${request.nextUrl.origin}?error=token_failed&details=${encodeURIComponent(JSON.stringify(tokenData))}`)
     }
 
     // Store the access token securely
@@ -53,16 +73,29 @@ export async function GET(request: NextRequest) {
       maxAge: expiresIn,
     })
 
-    response.cookies.set('tiktok_refresh_token', refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 365 * 24 * 60 * 60, // 1 year
-    })
+    if (refreshToken) {
+      response.cookies.set('tiktok_refresh_token', refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 365 * 24 * 60 * 60, // 1 year
+      })
+    }
 
+    // Shop ID'yi de sakla
+    if (shopId) {
+      response.cookies.set('tiktok_shop_id', shopId, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 365 * 24 * 60 * 60, // 1 year
+      })
+    }
+
+    console.log('Successfully processed authorization')
     return response
   } catch (error) {
     console.error('Error in OAuth callback:', error)
-    return NextResponse.redirect(`${request.nextUrl.origin}?error=server_error`)
+    return NextResponse.redirect(`${request.nextUrl.origin}?error=server_error&message=${encodeURIComponent(String(error))}`)
   }
 } 
