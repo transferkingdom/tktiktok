@@ -34,10 +34,10 @@ export default function Home() {
   const handleAuthorize = () => {
     const clientKey = process.env.NEXT_PUBLIC_TIKTOK_CLIENT_KEY || 'YOUR_CLIENT_KEY'
     const redirectUri = process.env.NEXT_PUBLIC_TIKTOK_REDIRECT_URI || 'http://localhost:3000/api/auth/callback'
-    const scope = 'authorization'
+    const scope = 'user.info.basic'
     
-    // TikTok Shop Partner API OAuth URL - gerçek endpoint
-    const authUrl = `https://services.tiktokshops.us/open/authorize?service_id=${clientKey}&response_type=code&scope=${scope}&redirect_uri=${encodeURIComponent(redirectUri)}&state=tiktok_shop_auth`
+    // TikTok OAuth URL - normal TikTok endpoint kullanıyoruz (TikTok Shop için de aynı)
+    const authUrl = `https://www.tiktok.com/v2/auth/authorize/?client_key=${clientKey}&response_type=code&scope=${scope}&redirect_uri=${encodeURIComponent(redirectUri)}&state=tiktok_shop_auth`
     
     window.location.href = authUrl
   }
