@@ -42,26 +42,32 @@ export async function POST(request: NextRequest) {
     // Test multiple possible endpoints
     const endpoints = [
       {
-        name: 'TikTok Shop Partner API v202309 - Product Details',
-        url: 'https://open-api.tiktokshop.com/api/products/details',
+        name: 'TikTok Global Shop API v202309 - Product List (POST)',
+        url: 'https://open-api.tiktokglobalshop.com/product/202309/products',
+        method: 'POST',
+        body: { shop_id: shopId, page_size: 10 }
+      },
+      {
+        name: 'TikTok Global Shop API v202309 - Product Details (POST)',
+        url: 'https://open-api.tiktokglobalshop.com/product/202309/products/details',
         method: 'POST',
         body: { shop_id: shopId, product_id: testProductId }
       },
       {
-        name: 'TikTok Shop Partner API v202309 - Product Search',
-        url: 'https://open-api.tiktokshop.com/api/products/search',
+        name: 'TikTok Global Shop API v202212 - Products (POST)',
+        url: 'https://open-api.tiktokglobalshop.com/product/202212/products',
+        method: 'POST',
+        body: { shop_id: shopId, page_size: 10 }
+      },
+      {
+        name: 'TikTok Shop API - Alternative Domain',
+        url: 'https://open-api.tiktok-shop.com/api/products/search',
         method: 'POST',
         body: { shop_id: shopId, page_size: 10, page_token: '' }
       },
       {
-        name: 'Alternative TikTok Global Shop API',
-        url: 'https://open-api.tiktokglobalshop.com/product/202309/products',
-        method: 'GET',
-        headers: { ...headers, 'shop-id': shopId }
-      },
-      {
-        name: 'TikTok Shop API v202212',
-        url: 'https://open-api.tiktokshop.com/api/product/202212/products',
+        name: 'TikTok Global Shop API - Auth Test',
+        url: 'https://open-api.tiktokglobalshop.com/authorization/202309/shops',
         method: 'GET',
         headers: { ...headers, 'shop-id': shopId }
       }
