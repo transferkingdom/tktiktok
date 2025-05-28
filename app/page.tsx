@@ -23,6 +23,7 @@ export default function Home() {
   const [products, setProducts] = useState<Product[]>([])
   const [priceRules, setPriceRules] = useState<PriceRule[]>([])
   const [testLoading, setTestLoading] = useState<boolean>(false)
+  const [directTestLoading, setDirectTestLoading] = useState<boolean>(false)
 
   useEffect(() => {
     // Check authorization status from server
@@ -164,6 +165,43 @@ export default function Home() {
     }
   }
 
+  const handleTestDirectToken = async () => {
+    setDirectTestLoading(true)
+    try {
+      console.log('🔑 Testing with direct access token')
+      
+      const response = await fetch('/api/test-direct-token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ productId: '1731182926124651087' }),
+      })
+      
+      const result = await response.json()
+      
+      console.log('🔑 Direct token test response:', result)
+      
+      if (response.ok) {
+        console.log('✅ Direct token test completed!')
+        console.log('📊 Summary:', result.summary)
+        console.log('🔗 Working endpoints:', result.summary.working_endpoints)
+        console.log('📋 All results:', result.results)
+        
+        const summary = result.summary
+        alert(`Direct Token Test Results:\n\nTotal tests: ${summary.total_tests}\nSuccessful: ${summary.successful_calls}\nFailed: ${summary.failed_calls}\n\nWorking endpoints: ${summary.working_endpoints.length}\n\nCheck console for detailed logs.`)
+      } else {
+        console.error('❌ Direct token test failed:', result)
+        alert(`Direct token test failed: ${result.error}`)
+      }
+    } catch (error) {
+      console.error('💥 Error testing direct token:', error)
+      alert('Error testing direct token')
+    } finally {
+      setDirectTestLoading(false)
+    }
+  }
+
   const addPriceRule = () => {
     setPriceRules([...priceRules, { variant: '', price: '' }])
   }
@@ -208,19 +246,31 @@ export default function Home() {
           </div>
         ) : (
           <div className="space-y-6">
-            {/* Test Button */}
+            {/* Test Buttons */}
             <div className="card">
-              <h2 className="text-xl font-semibold mb-4">API Test</h2>
+              <h2 className="text-xl font-semibold mb-4">API Tests</h2>
               <p className="text-gray-600 mb-4">
-                Test if TikTok Shop API is working by fetching product details
+                Test TikTok Shop API endpoints and connectivity
               </p>
-              <button
-                onClick={handleTestProduct}
-                disabled={testLoading}
-                className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {testLoading ? 'Testing API...' : 'Test Product API (ID: 1731182926124651087)'}
-              </button>
+              <div className="space-y-3">
+                <button
+                  onClick={handleTestProduct}
+                  disabled={testLoading}
+                  className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed w-full"
+                >
+                  {testLoading ? 'Testing API with Cookies...' : 'Test Product API (with cookies)'}
+                </button>
+                <button
+                  onClick={handleTestDirectToken}
+                  disabled={directTestLoading}
+                  className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed w-full"
+                >
+                  {directTestLoading ? 'Testing Direct Token...' : 'Test Direct Token (New: YW6gdQ...)'}
+                </button>
+              </div>
+              <p className="text-sm text-gray-500 mt-2">
+                The direct token test uses the new access token to test multiple API endpoints
+              </p>
             </div>
 
             <div className="card">

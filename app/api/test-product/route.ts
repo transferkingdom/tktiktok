@@ -33,27 +33,28 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // TikTok Shop API Headers
+    // TikTok Shop Partner API Headers (202309)
     const headers = {
       'Authorization': `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
       'x-tts-access-token': accessToken
     }
 
-    console.log('API Headers prepared for test')
+    console.log('API Headers prepared for TikTok Shop Partner API 202309')
 
     let apiResults: any[] = []
     let productData: any = null
 
-    // Test 1: TikTok Shop Product Detail API
+    // Test 1: TikTok Shop Partner API 202309 - Product Detail
     try {
-      console.log('🧪 Test 1: Product Detail API')
-      const detailResponse = await fetch(`https://open.tiktokapis.com/v2/seller/products/${productId}`, {
-        method: 'GET',
-        headers: {
-          ...headers,
-          'shop-id': shopId
-        }
+      console.log('🧪 Test 1: TikTok Shop Partner API 202309 - Product Detail')
+      const detailResponse = await fetch(`https://open-api.tiktokshop.com/api/products/details`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          shop_id: shopId,
+          product_id: productId
+        })
       })
 
       console.log('Product Detail API Response:', {
@@ -63,9 +64,9 @@ export async function POST(request: NextRequest) {
       })
 
       apiResults.push({
-        test: 'Product Detail API',
-        endpoint: `https://open.tiktokapis.com/v2/seller/products/${productId}`,
-        method: 'GET',
+        test: 'TikTok Shop Partner API 202309 - Product Detail',
+        endpoint: 'https://open-api.tiktokshop.com/api/products/details',
+        method: 'POST',
         status: detailResponse.status,
         success: detailResponse.ok
       })
@@ -82,27 +83,26 @@ export async function POST(request: NextRequest) {
     } catch (error) {
       console.error('❌ Product Detail API Error:', error)
       apiResults.push({
-        test: 'Product Detail API',
-        endpoint: `https://open.tiktokapis.com/v2/seller/products/${productId}`,
-        method: 'GET',
+        test: 'TikTok Shop Partner API 202309 - Product Detail',
+        endpoint: 'https://open-api.tiktokshop.com/api/products/details',
+        method: 'POST',
         status: 'ERROR',
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'
       })
     }
 
-    // Test 2: Alternative Product List API (looking for specific product)
+    // Test 2: TikTok Shop Partner API 202309 - Product List
     try {
-      console.log('🧪 Test 2: Product List API')
-      const listResponse = await fetch(`https://open.tiktokapis.com/v2/seller/products`, {
+      console.log('🧪 Test 2: TikTok Shop Partner API 202309 - Product List')
+      const listResponse = await fetch(`https://open-api.tiktokshop.com/api/products/search`, {
         method: 'POST',
         headers,
         body: JSON.stringify({
           shop_id: shopId,
-          page_info: {
-            page_size: 100,
-            page_token: ''
-          }
+          page_size: 50,
+          page_token: '',
+          product_status: null // Get all products
         })
       })
 
@@ -112,8 +112,8 @@ export async function POST(request: NextRequest) {
       })
 
       apiResults.push({
-        test: 'Product List API',
-        endpoint: 'https://open.tiktokapis.com/v2/seller/products',
+        test: 'TikTok Shop Partner API 202309 - Product List',
+        endpoint: 'https://open-api.tiktokshop.com/api/products/search',
         method: 'POST',
         status: listResponse.status,
         success: listResponse.ok
@@ -125,12 +125,13 @@ export async function POST(request: NextRequest) {
         
         // Look for our specific product in the list
         if (listData.data?.products) {
-          const foundProduct = listData.data.products.find((p: any) => p.product_id === productId)
+          const foundProduct = listData.data.products.find((p: any) => p.id === productId)
           if (foundProduct) {
             console.log('🎯 Found our product in list:', foundProduct)
             productData = foundProduct
           } else {
             console.log(`🔍 Product ${productId} not found in list of ${listData.data.products.length} products`)
+            console.log('Available product IDs:', listData.data.products.map((p: any) => p.id))
           }
         }
       } else {
@@ -141,8 +142,8 @@ export async function POST(request: NextRequest) {
     } catch (error) {
       console.error('❌ Product List API Error:', error)
       apiResults.push({
-        test: 'Product List API',
-        endpoint: 'https://open.tiktokapis.com/v2/seller/products',
+        test: 'TikTok Shop Partner API 202309 - Product List',
+        endpoint: 'https://open-api.tiktokshop.com/api/products/search',
         method: 'POST',
         status: 'ERROR',
         success: false,
@@ -150,10 +151,10 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Test 3: TikTok Partner API
+    // Test 3: Alternative TikTok Shop API Endpoint
     try {
-      console.log('🧪 Test 3: TikTok Partner API')
-      const partnerResponse = await fetch(`https://open-api.tiktokglobalshop.com/product/202309/products`, {
+      console.log('🧪 Test 3: Alternative TikTok Shop API')
+      const altResponse = await fetch(`https://open-api.tiktokglobalshop.com/product/202309/products`, {
         method: 'GET',
         headers: {
           ...headers,
@@ -161,40 +162,40 @@ export async function POST(request: NextRequest) {
         }
       })
 
-      console.log('Partner API Response:', {
-        status: partnerResponse.status,
-        statusText: partnerResponse.statusText
+      console.log('Alternative API Response:', {
+        status: altResponse.status,
+        statusText: altResponse.statusText
       })
 
       apiResults.push({
-        test: 'TikTok Partner API',
+        test: 'Alternative TikTok Shop API',
         endpoint: 'https://open-api.tiktokglobalshop.com/product/202309/products',
         method: 'GET',
-        status: partnerResponse.status,
-        success: partnerResponse.ok
+        status: altResponse.status,
+        success: altResponse.ok
       })
 
-      if (partnerResponse.ok) {
-        const partnerData = await partnerResponse.json()
-        console.log('✅ Partner API Success:', JSON.stringify(partnerData, null, 2))
+      if (altResponse.ok) {
+        const altData = await altResponse.json()
+        console.log('✅ Alternative API Success:', JSON.stringify(altData, null, 2))
         
         // Look for our specific product
-        if (partnerData.data?.products) {
-          const foundProduct = partnerData.data.products.find((p: any) => p.product_id === productId)
+        if (altData.data?.products) {
+          const foundProduct = altData.data.products.find((p: any) => p.product_id === productId || p.id === productId)
           if (foundProduct && !productData) {
-            console.log('🎯 Found our product in partner API:', foundProduct)
+            console.log('🎯 Found our product in alternative API:', foundProduct)
             productData = foundProduct
           }
         }
       } else {
-        const errorText = await partnerResponse.text()
-        console.log('❌ Partner API Failed:', errorText)
+        const errorText = await altResponse.text()
+        console.log('❌ Alternative API Failed:', errorText)
       }
 
     } catch (error) {
-      console.error('❌ Partner API Error:', error)
+      console.error('❌ Alternative API Error:', error)
       apiResults.push({
-        test: 'TikTok Partner API',
+        test: 'Alternative TikTok Shop API',
         endpoint: 'https://open-api.tiktokglobalshop.com/product/202309/products',
         method: 'GET',
         status: 'ERROR',
@@ -212,7 +213,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `Product API test completed for ${productId}`,
+      message: `TikTok Shop Partner API test completed for ${productId}`,
       product_id: productId,
       shop_id: shopId,
       product: productData,
@@ -224,7 +225,12 @@ export async function POST(request: NextRequest) {
         access_token_present: !!accessToken,
         total_api_tests: apiResults.length,
         successful_api_calls: apiResults.filter(r => r.success).length,
-        failed_api_calls: apiResults.filter(r => !r.success).length
+        failed_api_calls: apiResults.filter(r => !r.success).length,
+        api_endpoints_tested: [
+          'https://open-api.tiktokshop.com/api/products/details',
+          'https://open-api.tiktokshop.com/api/products/search',
+          'https://open-api.tiktokglobalshop.com/product/202309/products'
+        ]
       }
     })
 
