@@ -23,11 +23,14 @@ export async function POST(request: NextRequest) {
     // Use the new access token directly
     const accessToken = 'YW6gdQAAAACtKWVciveiwOD9AsK-pgGH1oZ9kbhNDOq4uCcITr6npA'
     const shopId = '7431862995146491691'
+    const appKey = '6e8q3qfuc5iqv'
+    const appSecret = 'f1a1a446f377780021df9219cb4b029170626997'
     const testProductId = productId || '1731182926124651087'
 
     console.log('Direct token test:', {
       accessToken: accessToken.substring(0, 10) + '...',
       shopId,
+      appKey,
       productId: testProductId
     })
 
@@ -39,37 +42,34 @@ export async function POST(request: NextRequest) {
 
     let apiResults: ApiResult[] = []
 
-    // Test multiple possible endpoints
+    // Test multiple possible endpoints with correct authentication
     const endpoints = [
       {
-        name: 'TikTok Global Shop API v202309 - Product List (POST)',
-        url: 'https://open-api.tiktokglobalshop.com/product/202309/products',
+        name: 'TikTok Global Shop API v202309 - Product List (GET)',
+        url: `https://open-api.tiktokglobalshop.com/product/202309/products?app_key=${appKey}&access_token=${accessToken}&shop_id=${shopId}&page_size=10`,
+        method: 'GET'
+      },
+      {
+        name: 'TikTok Global Shop API v202309 - Product Details (GET)',
+        url: `https://open-api.tiktokglobalshop.com/product/202309/products/${testProductId}?app_key=${appKey}&access_token=${accessToken}&shop_id=${shopId}`,
+        method: 'GET'
+      },
+      {
+        name: 'TikTok Global Shop API v202309 - Product List (POST with body)',
+        url: `https://open-api.tiktokglobalshop.com/product/202309/products?app_key=${appKey}&access_token=${accessToken}`,
         method: 'POST',
         body: { shop_id: shopId, page_size: 10 }
       },
       {
-        name: 'TikTok Global Shop API v202309 - Product Details (POST)',
-        url: 'https://open-api.tiktokglobalshop.com/product/202309/products/details',
+        name: 'TikTok Shop API - Search Products',
+        url: `https://open-api.tiktokglobalshop.com/product/202309/products/search?app_key=${appKey}&access_token=${accessToken}`,
         method: 'POST',
-        body: { shop_id: shopId, product_id: testProductId }
+        body: { shop_id: shopId, page_size: 10, keyword: '' }
       },
       {
-        name: 'TikTok Global Shop API v202212 - Products (POST)',
-        url: 'https://open-api.tiktokglobalshop.com/product/202212/products',
-        method: 'POST',
-        body: { shop_id: shopId, page_size: 10 }
-      },
-      {
-        name: 'TikTok Shop API - Alternative Domain',
-        url: 'https://open-api.tiktok-shop.com/api/products/search',
-        method: 'POST',
-        body: { shop_id: shopId, page_size: 10, page_token: '' }
-      },
-      {
-        name: 'TikTok Global Shop API - Auth Test',
-        url: 'https://open-api.tiktokglobalshop.com/authorization/202309/shops',
-        method: 'GET',
-        headers: { ...headers, 'shop-id': shopId }
+        name: 'TikTok Global Shop API - Shop Info',
+        url: `https://open-api.tiktokglobalshop.com/shop/202309/shops?app_key=${appKey}&access_token=${accessToken}&shop_id=${shopId}`,
+        method: 'GET'
       }
     ]
 
@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
         
         const requestOptions: any = {
           method: endpoint.method,
-          headers: endpoint.headers || headers
+          headers: headers
         }
 
         if (endpoint.body && endpoint.method === 'POST') {
