@@ -1,0 +1,12 @@
+{
+  "functions": {
+    "app/api/auth/callback/route.ts": {
+      "maxDuration": 30
+    },
+    "app/api/update-prices/route.ts": {
+      "maxDuration": 60
+    }
+  },
+  "regions": ["iad1"],
+  "framework": "nextjs"
+} 
