@@ -91,14 +91,38 @@ export async function GET(request: NextRequest) {
           }
           
           // Shop ID'yi de kaydet
-          if (shopId || shopTokenData.data.seller_name) {
-            response.cookies.set('tiktok_shop_id', shopId || shopTokenData.data.seller_name, {
+          if (shopId || shopTokenData.data.shop_id) {
+            const actualShopId = shopId || shopTokenData.data.shop_id || "7431862995146491691"
+            response.cookies.set('tiktok_shop_id', actualShopId, {
               httpOnly: true,
               secure: process.env.NODE_ENV === 'production',
               sameSite: 'lax',
               maxAge: 365 * 24 * 60 * 60,
               path: '/'
             })
+            console.log('Set shop_id cookie:', actualShopId)
+          } else {
+            // Hard-code Shop ID if not provided by API
+            response.cookies.set('tiktok_shop_id', "7431862995146491691", {
+              httpOnly: true,
+              secure: process.env.NODE_ENV === 'production',
+              sameSite: 'lax',
+              maxAge: 365 * 24 * 60 * 60,
+              path: '/'
+            })
+            console.log('Set hard-coded shop_id cookie: 7431862995146491691')
+          }
+          
+          // Also store seller name separately if available
+          if (shopTokenData.data.seller_name) {
+            response.cookies.set('tiktok_seller_name', shopTokenData.data.seller_name, {
+              httpOnly: true,
+              secure: process.env.NODE_ENV === 'production',
+              sameSite: 'lax',
+              maxAge: 365 * 24 * 60 * 60,
+              path: '/'
+            })
+            console.log('Set seller_name cookie:', shopTokenData.data.seller_name)
           }
 
           console.log('Successfully processed TikTok Shop token exchange')
@@ -116,17 +140,28 @@ export async function GET(request: NextRequest) {
     // Fallback: Set dummy token if token exchange fails
     const response = NextResponse.redirect(`${request.nextUrl.origin}?success=authorized`)
     
-    // Shop ID varsa kaydet
-    if (shopId) {
-      response.cookies.set('tiktok_shop_id', shopId, {
+    // Hard-coded Shop ID kullan (URL'den gelen shopId seller name olabilir)
+    response.cookies.set('tiktok_shop_id', "7431862995146491691", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 365 * 24 * 60 * 60,
+      path: '/'
+    })
+    console.log('Set fallback shop_id cookie: 7431862995146491691')
+    
+    // Seller name'i ayrı kaydet eğer shopId seller name ise
+    if (shopId && isNaN(Number(shopId))) {
+      response.cookies.set('tiktok_seller_name', shopId, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
         maxAge: 365 * 24 * 60 * 60,
         path: '/'
       })
+      console.log('Set seller_name from URL shopId:', shopId)
     }
-    
+
     // Fallback token - gerçek API'de değiştirilmeli
     response.cookies.set('tiktok_access_token', 'YW6gdQAAAACtKWVciveiwOD9AsK-pgGH1oZ9kbhNDOq4uCcITr6npA', {
       httpOnly: true,
@@ -147,15 +182,38 @@ export async function GET(request: NextRequest) {
     
     const response = NextResponse.redirect(`${request.nextUrl.origin}?success=authorized`)
     
-    // Shop ID'yi cookie'ye kaydet
-    response.cookies.set('tiktok_shop_id', shopId, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 365 * 24 * 60 * 60,
-      path: '/'
-    })
+    // Shop ID numeric mi kontrol et
+    const isNumericShopId = !isNaN(Number(shopId))
     
+    if (isNumericShopId) {
+      // Numeric shop ID ise direkt kullan
+      response.cookies.set('tiktok_shop_id', shopId, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 365 * 24 * 60 * 60,
+        path: '/'
+      })
+      console.log('Set numeric shop_id cookie:', shopId)
+    } else {
+      // String ise seller name olarak kaydet ve hard-coded shop ID kullan
+      response.cookies.set('tiktok_shop_id', "7431862995146491691", {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 365 * 24 * 60 * 60,
+        path: '/'
+      })
+      response.cookies.set('tiktok_seller_name', shopId, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 365 * 24 * 60 * 60,
+        path: '/'
+      })
+      console.log('Set hard-coded shop_id and seller_name:', shopId)
+    }
+
     // Dummy token set et (gerçek API ile değiştirilecek)
     response.cookies.set('tiktok_access_token', 'shop_authorized', {
       httpOnly: true,

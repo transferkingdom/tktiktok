@@ -16,33 +16,37 @@ export async function GET(request: NextRequest) {
     // Hard-coded shop ID we're using
     const hardCodedShopId = "7431862995146491691"
     
-    console.log('Access Token:', accessToken ? `${accessToken.substring(0, 20)}...` : 'NOT FOUND')
-    console.log('Refresh Token:', refreshToken ? `${refreshToken.substring(0, 20)}...` : 'NOT FOUND')
+    console.log('=== FULL TOKEN DEBUG ===')
+    console.log('Full Access Token:', accessToken || 'NOT FOUND')
+    console.log('Full Refresh Token:', refreshToken || 'NOT FOUND')
     console.log('Shop ID from cookie:', shopId)
     console.log('Hard-coded Shop ID:', hardCodedShopId)
     console.log('Open ID:', openId)
     console.log('Seller Name:', sellerName)
+    console.log('Shop ID Match:', shopId === hardCodedShopId)
+    
+    // Get all cookies for debugging
+    const allCookies = Array.from(cookieStore.getAll())
+    console.log('All cookies:', allCookies)
     
     return NextResponse.json({
       success: true,
       token_info: {
         access_token_present: !!accessToken,
-        access_token_preview: accessToken ? `${accessToken.substring(0, 20)}...` : null,
+        access_token_full: accessToken || null,
         access_token_length: accessToken?.length || 0,
         refresh_token_present: !!refreshToken,
-        refresh_token_preview: refreshToken ? `${refreshToken.substring(0, 20)}...` : null,
+        refresh_token_full: refreshToken || null,
         shop_id_from_cookie: shopId,
+        shop_id_from_cookie_type: typeof shopId,
         hard_coded_shop_id: hardCodedShopId,
+        hard_coded_shop_id_type: typeof hardCodedShopId,
         open_id: openId,
         seller_name: sellerName,
         shop_id_match: shopId === hardCodedShopId,
+        shop_id_problem: shopId === "Transfer Kingdom" ? "WRONG - This is seller name, not shop ID!" : "Check shop ID",
         all_cookies: Object.fromEntries(
-          Array.from(cookieStore.getAll()).map(cookie => [
-            cookie.name,
-            cookie.name.includes('token') ? 
-              `${cookie.value.substring(0, 10)}...` : 
-              cookie.value
-          ])
+          allCookies.map(cookie => [cookie.name, cookie.value])
         )
       }
     })
