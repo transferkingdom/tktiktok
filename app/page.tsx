@@ -220,15 +220,20 @@ export default function Home() {
       
       console.log('🔧 SDK test response:', result)
       
-      if (response.ok) {
+      if (response.ok && result.success) {
         console.log('✅ SDK test successful!')
         console.log('📦 API Response:', result.response)
-        console.log('📋 Data:', result.response.data)
+        if (result.response && result.response.data) {
+          console.log('📋 Data:', result.response.data)
+        }
         
-        alert(`SDK Test Successful!\n\nStatus: ${result.response.status}\nMessage: ${result.message}\n\nCheck console for full API response data.`)
+        alert(`SDK Test Successful!\n\nStatus: ${result.response?.status || 'N/A'}\nMessage: ${result.message}\n\nCheck console for full API response data.`)
       } else {
         console.error('❌ SDK test failed:', result)
-        alert(`SDK test failed: ${result.error?.message || result.error}`)
+        
+        // Handle both error formats
+        const errorMsg = result.error?.message || result.error || result.message || 'Unknown error'
+        alert(`SDK test failed: ${errorMsg}`)
       }
     } catch (error) {
       console.error('💥 Error testing SDK:', error)
