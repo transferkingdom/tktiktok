@@ -6,12 +6,14 @@ export async function GET(request: NextRequest) {
     console.log('=== TikTok Shop Callback Processing ===')
     
     const { searchParams } = new URL(request.url)
-    const authCode = searchParams.get('auth_code')
+    const code = searchParams.get('code')
+    const state = searchParams.get('state')
     
-    console.log('Received auth code:', authCode?.substring(0, 10) + '...')
+    console.log('Received code:', code?.substring(0, 10) + '...')
+    console.log('Received state:', state)
     
-    if (!authCode) {
-      console.error('No auth code received')
+    if (!code) {
+      console.error('No authorization code received')
       return NextResponse.json({ error: 'Authorization code not found' }, { status: 400 })
     }
 
@@ -24,8 +26,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Configuration error' }, { status: 500 })
     }
 
-    // Exchange auth code for access token
-    const tokenResponse = await fetch('https://partner.us.tiktokshop.com/service/token/get', {
+    // Exchange auth code for access token using the correct endpoint
+    const tokenResponse = await fetch('https://services.tiktokshops.us/api/v2/token/get', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -33,7 +35,7 @@ export async function GET(request: NextRequest) {
       body: JSON.stringify({
         app_key: appKey,
         app_secret: appSecret,
-        auth_code: authCode,
+        auth_code: code,
         grant_type: 'authorized_code'
       })
     })
@@ -53,6 +55,16 @@ export async function GET(request: NextRequest) {
       // Store refresh token if available
       if (tokenData.data.refresh_token) {
         cookies().set('tiktok_shop_refresh_token', tokenData.data.refresh_token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          maxAge: 60 * 60 * 24 * 30 // 30 days
+        })
+      }
+
+      // Store shop ID if available
+      if (tokenData.data.shop_id) {
+        cookies().set('tiktok_shop_id', tokenData.data.shop_id, {
           httpOnly: true,
           secure: process.env.NODE_ENV === 'production',
           sameSite: 'lax',

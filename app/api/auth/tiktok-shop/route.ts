@@ -16,8 +16,12 @@ export async function GET(request: NextRequest) {
     // Generate state for security
     const state = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
     
-    // TikTok Shop authorization URL using US domain (as shown in Partner Center)
-    const authUrl = `https://partner.us.tiktokshop.com/service/authorize?service_id=${SERVICE_ID}&client_key=${APP_KEY}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`
+    // TikTok Shop authorization URL - using the services.tiktokshops.us domain
+    const authUrl = `https://services.tiktokshops.us/open/authorize?` +
+      `service_id=${SERVICE_ID}&` +
+      `client_key=${APP_KEY}&` +
+      `redirect_uri=${encodeURIComponent(REDIRECT_URI)}&` +
+      `state=${state}`
     
     console.log('TikTok Shop Auth URL:', authUrl)
     console.log('Service ID:', SERVICE_ID)
