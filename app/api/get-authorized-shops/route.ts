@@ -1,5 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
+import crypto from 'crypto'
+
+const APP_KEY = '6e8q3qfuc5iqv'
+const APP_SECRET = 'f1a1a446f377780021df9219cb4b029170626997'
+
+function generateSignature(timestamp: number, appKey: string, accessToken: string, appSecret: string) {
+  const signString = `app_key${appKey}access_token${accessToken}timestamp${timestamp}${appSecret}`
+  return crypto.createHash('sha256').update(signString).digest('hex')
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -19,14 +28,29 @@ export async function GET(request: NextRequest) {
     }
     
     console.log('Using access token:', accessToken.substring(0, 10) + '...')
+
+    // Generate timestamp and signature
+    const timestamp = Math.floor(Date.now() / 1000)
+    const sign = generateSignature(timestamp, APP_KEY, accessToken, APP_SECRET)
+    
+    // Construct URL with query parameters
+    const baseUrl = 'https://open-api.tiktokglobalshop.com/api/shops/get_authorized_shop'
+    const queryParams = new URLSearchParams({
+      app_key: APP_KEY,
+      timestamp: timestamp.toString(),
+      sign: sign,
+      access_token: accessToken
+    })
+    
+    const url = `${baseUrl}?${queryParams.toString()}`
+    console.log('Request URL:', url)
     
     // Call TikTok Shop API to get authorized shops
-    const response = await fetch('https://open-api.tiktokglobalshop.com/api/authorization/v2/shops', {
+    const response = await fetch(url, {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'Access-Token': accessToken
+        'Content-Type': 'application/json'
       }
     })
     
