@@ -43,7 +43,6 @@ export default function Home() {
   const [productLoading, setProductLoading] = useState<boolean>(false)
   const [editingVariants, setEditingVariants] = useState<Record<string, string>>({})
   const [updatingPrices, setUpdatingPrices] = useState<Record<string, boolean>>({})
-  const [isDemoMode, setIsDemoMode] = useState<boolean>(false)
 
   useEffect(() => {
     // Check authorization status from server
@@ -155,7 +154,6 @@ export default function Home() {
 
     setProductLoading(true)
     setProduct(null)
-    setIsDemoMode(false)
     
     try {
       console.log('📦 Fetching product:', productId)
@@ -177,7 +175,6 @@ export default function Home() {
         console.log('📋 Product details:', result.product)
         
         setProduct(result.product)
-        setIsDemoMode(result.is_demo || false)
         
         // Initialize editing prices with current prices
         const initialPrices: Record<string, string> = {}
@@ -209,11 +206,6 @@ export default function Home() {
     const newPrice = editingVariants[variant.id]
     
     if (!newPrice || newPrice === variant.price.original) {
-      return
-    }
-
-    if (isDemoMode) {
-      alert('This is demo mode. Real price updates are disabled.\n\nTo test real price updates, ensure your TikTok Shop API is properly configured.')
       return
     }
 
@@ -354,11 +346,6 @@ export default function Home() {
               <div className="card">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-xl font-semibold">Product Details & Price Editing</h2>
-                  {isDemoMode && (
-                    <span className="px-3 py-1 bg-yellow-100 text-yellow-800 text-sm rounded-full">
-                      📝 Demo Mode - API Testing
-                    </span>
-                  )}
                 </div>
                 
                 {/* Product Info */}

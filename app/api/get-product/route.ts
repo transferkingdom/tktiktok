@@ -163,52 +163,22 @@ export async function POST(request: NextRequest) {
     }
     
     if (!productData) {
-      // If no real API worked, create demo data for testing the UI
-      console.log('⚠️ No working API found, creating demo product for UI testing')
-      productData = {
-        id: productId,
-        name: "Demo Product - DTF Transfer Design",
-        status: "ACTIVE",
-        description: "High-quality DTF transfer for apparel",
-        category_name: "Clothing & Accessories",
-        skus: [
-          {
-            id: "demo_sku_1",
-            seller_sku: "USA258",
-            price: {
-              original_price: "19.99",
-              sale_price: "19.99"
-            },
-            sales_attributes: [
-              {
-                attribute_name: "Size",
-                value_name: "Unisex - S & M ( 10\" )"
-              }
-            ],
-            inventory: {
-              quantity: 100
-            }
-          },
-          {
-            id: "demo_sku_2", 
-            seller_sku: "USA344",
-            price: {
-              original_price: "24.99",
-              sale_price: "22.99"
-            },
-            sales_attributes: [
-              {
-                attribute_name: "Size",
-                value_name: "Unisex - L & XL ( 12\" )"
-              }
-            ],
-            inventory: {
-              quantity: 50
-            }
-          }
+      // Return error instead of demo data
+      console.log('❌ No working API found')
+      return NextResponse.json({
+        success: false,
+        error: 'Product not found in any API endpoint',
+        product_id: productId,
+        attempted_endpoints: results.length,
+        test_results: results,
+        suggestions: [
+          'Verify the product ID is correct',
+          'Check if your access token has read permissions', 
+          'Ensure the product exists in your TikTok Shop',
+          'Try refreshing your access token',
+          'Contact TikTok Shop support if the issue persists'
         ]
-      }
-      workingEndpoint = "Demo Mode (for UI testing)"
+      }, { status: 404 })
     }
     
     // Format the product data for frontend
@@ -245,8 +215,7 @@ export async function POST(request: NextRequest) {
       working_endpoint: workingEndpoint,
       product: formattedProduct,
       raw_data: productData, // For debugging
-      test_results: results,
-      is_demo: workingEndpoint?.includes('Demo') || false
+      test_results: results
     })
     
   } catch (error) {
