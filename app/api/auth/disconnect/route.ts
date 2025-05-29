@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
 
     // Try to revoke the access token with TikTok Shop API
     try {
-      const response = await fetch('https://api-us.tiktokshop.com/api/auth/token/revoke', {
+      const response = await fetch('https://open-api.tiktokshop.com/api/auth/token/revoke', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
