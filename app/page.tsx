@@ -146,6 +146,42 @@ export default function Home() {
     }
   }
 
+  const handleDebugToken = async () => {
+    try {
+      console.log('🔍 Getting debug token info...')
+      
+      const response = await fetch('/api/debug-token')
+      const result = await response.json()
+      
+      console.log('🔍 Debug token response:', result)
+      
+      if (response.ok && result.success) {
+        const info = result.token_info
+        alert(`Debug Token Information:
+
+Access Token: ${info.access_token_present ? '✅ Present' : '❌ Missing'}
+Preview: ${info.access_token_preview || 'N/A'}
+Length: ${info.access_token_length}
+
+Refresh Token: ${info.refresh_token_present ? '✅ Present' : '❌ Missing'}
+
+Shop ID (Cookie): ${info.shop_id_from_cookie || 'Not found'}
+Shop ID (Hard-coded): ${info.hard_coded_shop_id}
+Match: ${info.shop_id_match ? '✅ Yes' : '❌ No'}
+
+Open ID: ${info.open_id || 'Not found'}
+Seller Name: ${info.seller_name || 'Not found'}
+
+Check console for full details.`)
+      } else {
+        alert(`Debug failed: ${result.error}`)
+      }
+    } catch (error) {
+      console.error('💥 Error getting debug info:', error)
+      alert('Error getting debug info')
+    }
+  }
+
   const handleGetProduct = async () => {
     if (!productId.trim()) {
       alert('Please enter a product ID')
@@ -306,13 +342,21 @@ export default function Home() {
             {/* Token Management */}
             <div className="card">
               <h2 className="text-xl font-semibold mb-4">Token Management</h2>
-              <button
-                onClick={handleRefreshToken}
-                disabled={refreshTokenLoading}
-                className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed bg-blue-600 hover:bg-blue-700"
-              >
-                {refreshTokenLoading ? 'Refreshing Token...' : '🔄 Refresh Access Token'}
-              </button>
+              <div className="flex gap-4">
+                <button
+                  onClick={handleRefreshToken}
+                  disabled={refreshTokenLoading}
+                  className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed bg-blue-600 hover:bg-blue-700"
+                >
+                  {refreshTokenLoading ? 'Refreshing Token...' : '🔄 Refresh Access Token'}
+                </button>
+                <button
+                  onClick={handleDebugToken}
+                  className="btn-secondary bg-gray-600 hover:bg-gray-700 text-white"
+                >
+                  🔍 Debug Token Info
+                </button>
+              </div>
             </div>
 
             {/* Product Fetch */}
