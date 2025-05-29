@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
       config: new ClientConfiguration(
         "6e8q3qfuc5iqv", // app_key
         "f1a1a446f377780021df9219cb4b029170626997", // app_secret
-        "https://open-api.tiktokglobalshop.com" // basePath
+        "https://open-api.tiktokshop.com" // basePath - trying original URL
       ),
     })
     
@@ -26,19 +26,20 @@ export async function POST(request: NextRequest) {
       app_key: ClientConfiguration.globalConfig.app_key,
       app_secret: ClientConfiguration.globalConfig.app_secret?.substring(0, 10) + '...',
       access_token: access_token.substring(0, 10) + '...',
+      basePath: "https://open-api.tiktokshop.com",
       sandbox: false
     })
     
     try {
       console.log('🚀 Making Product Search API call with SDK...')
       
-      // Use the latest Product API (V202502)
+      // Use the latest Product API (V202502) with shop_id
       const result = await client.api.ProductV202502Api.ProductsSearchPost(
         10, // page_size
         access_token, // x-tts-access-token
         'application/json', // content-type
         undefined, // page_token (optional)
-        undefined, // shop_cipher (optional)
+        "7431862995146491691", // shop_cipher - using our Shop ID
         {} // SearchProductsRequestBody (optional)
       )
       
