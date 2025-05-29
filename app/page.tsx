@@ -292,6 +292,41 @@ export default function Home() {
     setPriceRules(newRules)
   }
 
+  const handleSingleProductTest = async (productId: string, variant: string, sku: string) => {
+    setTestLoading(true)
+    try {
+      console.log('🧪 Testing single product price update')
+      
+      const response = await fetch('/api/test-single-product', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ productId, variant, sku }),
+      })
+      
+      const result = await response.json()
+      
+      console.log('🧪 Single product test response:', result)
+      
+      if (response.ok) {
+        console.log('✅ Single product test successful!')
+        console.log('📦 Product details:', result.product)
+        console.log('🏷️ Variants:', result.variants)
+        
+        alert(`Single Product Test Successful!\n\nProduct: ${result.product?.name || 'N/A'}\nVariants: ${result.variants?.length || 0}\n\nCheck console for full details.`)
+      } else {
+        console.error('❌ Single product test failed:', result)
+        alert(`Single product test failed: ${result.error}`)
+      }
+    } catch (error) {
+      console.error('💥 Error testing single product:', error)
+      alert('Error testing single product')
+    } finally {
+      setTestLoading(false)
+    }
+  }
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="max-w-4xl mx-auto">
@@ -321,57 +356,31 @@ export default function Home() {
           </div>
         ) : (
           <div className="space-y-6">
-            {/* Test Buttons */}
+            {/* Single Product Test */}
             <div className="card">
-              <h2 className="text-xl font-semibold mb-4">API Tests</h2>
-              <p className="text-gray-600 mb-4">
-                Test TikTok Shop API endpoints and connectivity
-              </p>
+              <h2 className="text-xl font-semibold mb-4">Single Product Price Update Test</h2>
+              <div className="bg-gray-50 p-4 rounded-lg mb-4">
+                <h3 className="font-semibold mb-2">Target Product:</h3>
+                <p><strong>Product ID:</strong> 1730973647867908687</p>
+                <p><strong>Variant:</strong> Unisex - S &amp; M ( 10" )</p>
+                <p><strong>SKU:</strong> USA258</p>
+              </div>
               <div className="space-y-3">
-                <button
-                  onClick={() => {
-                    // Clear cookies and reload to force re-auth
-                    document.cookie = 'tiktok_access_token=; Max-Age=0; path=/';
-                    document.cookie = 'tiktok_refresh_token=; Max-Age=0; path=/';
-                    window.location.href = '/';
-                  }}
-                  className="btn-secondary w-full bg-red-600 hover:bg-red-700 text-white"
-                >
-                  🔄 Force Re-Authorization (Get New Token)
-                </button>
-                <button
-                  onClick={handleTestProduct}
-                  disabled={testLoading}
-                  className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed w-full"
-                >
-                  {testLoading ? 'Testing API with Cookies...' : 'Test Product API (with cookies)'}
-                </button>
-                <button
-                  onClick={handleTestDirectToken}
-                  disabled={directTestLoading}
-                  className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed w-full"
-                >
-                  {directTestLoading ? 'Testing Direct Token...' : 'Test Direct Token (New: YW6gdQ...)'}
-                </button>
-                <button
-                  onClick={handleTestSDK}
-                  disabled={sdkTestLoading}
-                  className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed w-full bg-green-600 hover:bg-green-700"
-                >
-                  {sdkTestLoading ? 'Testing Official SDK...' : 'Test Official TikTok SDK (RECOMMENDED)'}
-                </button>
                 <button
                   onClick={handleRefreshToken}
                   disabled={refreshTokenLoading}
                   className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed w-full bg-blue-600 hover:bg-blue-700"
                 >
-                  {refreshTokenLoading ? 'Refreshing Token...' : '🔄 Refresh Access Token (Official TikTok Shop API)'}
+                  {refreshTokenLoading ? 'Refreshing Token...' : '🔄 Refresh Access Token'}
+                </button>
+                <button
+                  onClick={() => handleSingleProductTest('1730973647867908687', 'Unisex - S & M ( 10" )', 'USA258')}
+                  disabled={testLoading}
+                  className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed w-full bg-green-600 hover:bg-green-700"
+                >
+                  {testLoading ? 'Testing Product...' : '🎯 Test Single Product Price Update'}
                 </button>
               </div>
-              <p className="text-sm text-gray-500 mt-2">
-                The direct token test uses the new access token to test multiple API endpoints. 
-                Use refresh token to get a new access token when the current one expires.
-              </p>
             </div>
 
             <div className="card">
