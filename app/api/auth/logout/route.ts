@@ -36,6 +36,12 @@ export async function POST(request: NextRequest) {
       }
     })
     
+    // Clear all TikTok Shop related cookies
+    cookieStore.delete('tiktok_shop_access_token');
+    cookieStore.delete('tiktok_shop_refresh_token');
+    cookieStore.delete('tiktok_shop_open_id');
+    cookieStore.delete('tiktok_shop_seller_name');
+    
     console.log('✅ Logout successful - all cookies cleared')
     
     return NextResponse.json({

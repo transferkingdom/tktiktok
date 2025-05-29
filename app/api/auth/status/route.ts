@@ -11,12 +11,14 @@ export async function GET(request: NextRequest) {
     const shopId = cookieStore.get('tiktok_shop_id')?.value
     const shopName = cookieStore.get('tiktok_shop_name')?.value
     const authMethod = cookieStore.get('tiktok_shop_auth_method')?.value
+    const openId = cookieStore.get('tiktok_shop_open_id')?.value
+    const sellerName = cookieStore.get('tiktok_shop_seller_name')?.value
     
     if (shopAccessToken) {
       console.log('✅ TikTok Shop Partner authentication found')
       return NextResponse.json({
         authorized: true,
-        auth_type: 'tiktok_shop_partner',
+        auth_type: 'tiktok_shop',
         token_type: 'shop_partner',
         token_info: {
           access_token: `${shopAccessToken.substring(0, 20)}...`,
@@ -26,7 +28,11 @@ export async function GET(request: NextRequest) {
           shop_name: shopName,
           auth_method: authMethod
         },
-        warning: null
+        warning: null,
+        seller_info: {
+          open_id: openId,
+          seller_name: sellerName
+        }
       })
     }
     
@@ -34,7 +40,6 @@ export async function GET(request: NextRequest) {
     const accessToken = cookieStore.get('tiktok_access_token')?.value
     const refreshToken = cookieStore.get('tiktok_refresh_token')?.value
     const legacyShopId = cookieStore.get('shop_id')?.value
-    const sellerName = cookieStore.get('seller_name')?.value
     
     if (accessToken) {
       console.log('⚠️ Legacy TikTok authentication found')
