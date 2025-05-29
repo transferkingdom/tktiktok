@@ -8,9 +8,11 @@ export async function POST(request: NextRequest) {
     console.log('=== Get Product API Start ===')
     console.log('Product ID:', productId)
     
-    // Get access token from cookies
+    // Get access token from cookies - prioritize TikTok Shop Partner tokens
     const cookieStore = cookies()
-    const accessToken = cookieStore.get('tiktok_access_token')?.value
+    const shopAccessToken = cookieStore.get('tiktok_shop_access_token')?.value
+    const legacyAccessToken = cookieStore.get('tiktok_access_token')?.value
+    const accessToken = shopAccessToken || legacyAccessToken
     const shopId = "7431862995146491691"
     
     if (!accessToken) {
@@ -20,6 +22,8 @@ export async function POST(request: NextRequest) {
       )
     }
     
+    const tokenType = shopAccessToken ? 'TikTok Shop Partner' : 'Legacy TikTok'
+    console.log('Using access token type:', tokenType)
     console.log('Using access token:', accessToken.substring(0, 10) + '...')
     
     // TikTok Shop API endpoints - US region corrected URLs
