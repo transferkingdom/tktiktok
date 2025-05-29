@@ -23,16 +23,41 @@ export async function POST(request: NextRequest) {
     
     console.log('Using access token:', accessToken.substring(0, 10) + '...')
     
+    const shopId = "7431862995146491691"
+    
     // TikTok Shop API endpoints for price update based on documentation
     const endpoints = [
       {
-        name: 'TikTok Shop API - Update Product Prices',
+        name: 'TikTok Shop SDK - ProductV202309Api Price Update',
+        url: `https://open-api.tiktokshop.com/product/202309/products/${productId}`,
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+          'x-tts-access-token': accessToken,
+          'shop-cipher': shopId
+        } as Record<string, string>,
+        body: JSON.stringify({
+          skus: [
+            {
+              id: variantId,
+              price: {
+                original_price: parseFloat(newPrice).toFixed(2),
+                sale_price: parseFloat(newPrice).toFixed(2)
+              }
+            }
+          ]
+        })
+      },
+      {
+        name: 'TikTok Shop API - Update Product Prices V2',
         url: 'https://open-api.tiktokshop.com/api/products/prices',
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
-          'x-tts-access-token': accessToken
+          'x-tts-access-token': accessToken,
+          'shop-id': shopId
         } as Record<string, string>,
         body: JSON.stringify({
           product_id: productId,
@@ -54,7 +79,8 @@ export async function POST(request: NextRequest) {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
-          'x-tts-access-token': accessToken
+          'x-tts-access-token': accessToken,
+          'shop-id': shopId
         } as Record<string, string>,
         body: JSON.stringify({
           updates: [
@@ -63,27 +89,6 @@ export async function POST(request: NextRequest) {
               sku_id: variantId,
               original_price: parseFloat(newPrice).toFixed(2),
               sale_price: parseFloat(newPrice).toFixed(2)
-            }
-          ]
-        })
-      },
-      {
-        name: 'TikTok Shop API - Legacy Update Product',
-        url: `https://open-api.tiktokshop.com/product/202309/products/${productId}`,
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-          'x-tts-access-token': accessToken
-        } as Record<string, string>,
-        body: JSON.stringify({
-          skus: [
-            {
-              id: variantId,
-              price: {
-                original_price: parseFloat(newPrice).toFixed(2),
-                sale_price: parseFloat(newPrice).toFixed(2)
-              }
             }
           ]
         })
