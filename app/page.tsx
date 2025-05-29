@@ -254,6 +254,34 @@ Check console for detailed results.`)
     }
   }
 
+  const handleLogout = async () => {
+    try {
+      console.log('🚪 Logging out...')
+      
+      const response = await fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+      
+      const result = await response.json()
+      
+      console.log('🚪 Logout response:', result)
+      
+      if (response.ok && result.success) {
+        alert('✅ Logged out successfully!\n\nAll authentication cookies cleared.\nPage will reload.')
+        // Reload page to show authorization buttons
+        window.location.reload()
+      } else {
+        alert(`Logout failed: ${result.error}`)
+      }
+    } catch (error) {
+      console.error('💥 Error logging out:', error)
+      alert('Error logging out')
+    }
+  }
+
   const handleGetProduct = async () => {
     if (!productId.trim()) {
       alert('Please enter a product ID')
@@ -450,6 +478,12 @@ Check console for detailed results.`)
                   className="btn-secondary bg-purple-600 hover:bg-purple-700 text-white"
                 >
                   🧪 Test Auth
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="btn-secondary bg-orange-600 hover:bg-orange-700 text-white"
+                >
+                  🚪 Logout
                 </button>
               </div>
             </div>
