@@ -29,25 +29,26 @@ export async function POST(request: NextRequest) {
     // TikTok Shop API endpoints - Updated URLs
     const endpoints = [
       {
-        name: 'TikTok Shop API - Product Details',
-        url: `https://open-api.tiktokshop.com/api/products/details/${productId}`,
+        name: 'TikTok Shop API - Product Details V202309',
+        url: `https://open-api.tiktokshop.com/product/202309/products/${productId}`,
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
           'x-tts-access-token': accessToken,
-          'shop-id': shopId
-        } as Record<string, string>
+          'shop_cipher': shopId
+        } as Record<string, string>,
+        params: new URLSearchParams({
+          'need_variant': 'true'
+        })
       },
       {
-        name: 'TikTok Shop API - Product Search',
-        url: 'https://open-api.tiktokshop.com/api/products/search',
+        name: 'TikTok Shop API - Product Search V202309',
+        url: 'https://open-api.tiktokshop.com/product/202309/products/search',
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
           'x-tts-access-token': accessToken,
-          'shop-id': shopId
+          'shop_cipher': shopId
         } as Record<string, string>,
         body: JSON.stringify({
           page_size: 20,
@@ -68,6 +69,9 @@ export async function POST(request: NextRequest) {
         console.log(`\n🔍 Testing: ${endpoint.name}`)
         
         let finalUrl = endpoint.url
+        if (endpoint.params) {
+          finalUrl += '?' + endpoint.params.toString()
+        }
         console.log(`URL: ${finalUrl}`)
         
         const fetchOptions = {
