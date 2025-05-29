@@ -30,12 +30,12 @@ export async function POST(request: NextRequest) {
     const endpoints = [
       {
         name: 'TikTok Shop API - Product Details V202309',
-        url: `https://api-us.tiktokshop.com/product/202309/products/${productId}`,
+        url: `https://open-api.tiktokglobalshop.com/product/202309/products/${productId}`,
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
           'x-tts-access-token': accessToken,
-          'shop_cipher': shopId
+          'shop-id': shopId
         } as Record<string, string>,
         params: new URLSearchParams({
           'need_variant': 'true'
@@ -43,12 +43,12 @@ export async function POST(request: NextRequest) {
       },
       {
         name: 'TikTok Shop API - Product Search V202309',
-        url: 'https://api-us.tiktokshop.com/product/202309/products/search',
+        url: 'https://open-api.tiktokglobalshop.com/product/202309/products/search',
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'x-tts-access-token': accessToken,
-          'shop_cipher': shopId
+          'shop-id': shopId
         } as Record<string, string>,
         body: JSON.stringify({
           page_size: 20,
