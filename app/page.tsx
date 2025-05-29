@@ -182,6 +182,32 @@ Check console for full details.`)
     }
   }
 
+  const handleFixShopId = async () => {
+    try {
+      console.log('🔧 Fixing Shop ID...')
+      
+      const response = await fetch('/api/fix-shop-id', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+      
+      const result = await response.json()
+      
+      console.log('🔧 Fix shop ID response:', result)
+      
+      if (response.ok && result.success) {
+        alert('✅ Shop ID Fixed Successfully!\n\nShop ID: 7431862995146491691\nSeller Name: Transfer Kingdom (separate cookie)\n\nYou can now try fetching products again.')
+      } else {
+        alert(`Fix failed: ${result.error}`)
+      }
+    } catch (error) {
+      console.error('💥 Error fixing shop ID:', error)
+      alert('Error fixing shop ID')
+    }
+  }
+
   const handleGetProduct = async () => {
     if (!productId.trim()) {
       alert('Please enter a product ID')
@@ -342,7 +368,7 @@ Check console for full details.`)
             {/* Token Management */}
             <div className="card">
               <h2 className="text-xl font-semibold mb-4">Token Management</h2>
-              <div className="flex gap-4">
+              <div className="flex gap-4 flex-wrap">
                 <button
                   onClick={handleRefreshToken}
                   disabled={refreshTokenLoading}
@@ -355,6 +381,12 @@ Check console for full details.`)
                   className="btn-secondary bg-gray-600 hover:bg-gray-700 text-white"
                 >
                   🔍 Debug Token Info
+                </button>
+                <button
+                  onClick={handleFixShopId}
+                  className="btn-secondary bg-red-600 hover:bg-red-700 text-white"
+                >
+                  🔧 Fix Shop ID
                 </button>
               </div>
             </div>
