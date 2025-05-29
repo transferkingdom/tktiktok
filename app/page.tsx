@@ -25,6 +25,7 @@ export default function Home() {
   const [testLoading, setTestLoading] = useState<boolean>(false)
   const [directTestLoading, setDirectTestLoading] = useState<boolean>(false)
   const [sdkTestLoading, setSdkTestLoading] = useState<boolean>(false)
+  const [refreshTokenLoading, setRefreshTokenLoading] = useState<boolean>(false)
 
   useEffect(() => {
     // Check authorization status from server
@@ -243,6 +244,39 @@ export default function Home() {
     }
   }
 
+  const handleRefreshToken = async () => {
+    setRefreshTokenLoading(true)
+    try {
+      console.log('🔄 Refreshing access token...')
+      
+      const response = await fetch('/api/refresh-token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+      
+      const result = await response.json()
+      
+      console.log('🔄 Refresh token response:', result)
+      
+      if (response.ok && result.success) {
+        console.log('✅ Token refresh successful!')
+        console.log('📦 New token info:', result.data)
+        
+        alert(`Token Refresh Successful!\n\nNew access token generated\nExpires: ${new Date(result.data.access_token_expire_in * 1000).toLocaleString()}\n\nYou can now test APIs again!`)
+      } else {
+        console.error('❌ Token refresh failed:', result)
+        alert(`Token refresh failed: ${result.error || 'Unknown error'}\n\nCheck console for details.`)
+      }
+    } catch (error) {
+      console.error('💥 Error refreshing token:', error)
+      alert('Error refreshing token')
+    } finally {
+      setRefreshTokenLoading(false)
+    }
+  }
+
   const addPriceRule = () => {
     setPriceRules([...priceRules, { variant: '', price: '' }])
   }
@@ -295,6 +329,17 @@ export default function Home() {
               </p>
               <div className="space-y-3">
                 <button
+                  onClick={() => {
+                    // Clear cookies and reload to force re-auth
+                    document.cookie = 'tiktok_access_token=; Max-Age=0; path=/';
+                    document.cookie = 'tiktok_refresh_token=; Max-Age=0; path=/';
+                    window.location.href = '/';
+                  }}
+                  className="btn-secondary w-full bg-red-600 hover:bg-red-700 text-white"
+                >
+                  🔄 Force Re-Authorization (Get New Token)
+                </button>
+                <button
                   onClick={handleTestProduct}
                   disabled={testLoading}
                   className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed w-full"
@@ -315,9 +360,17 @@ export default function Home() {
                 >
                   {sdkTestLoading ? 'Testing Official SDK...' : 'Test Official TikTok SDK (RECOMMENDED)'}
                 </button>
+                <button
+                  onClick={handleRefreshToken}
+                  disabled={refreshTokenLoading}
+                  className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed w-full bg-blue-600 hover:bg-blue-700"
+                >
+                  {refreshTokenLoading ? 'Refreshing Token...' : '🔄 Refresh Access Token (Official TikTok Shop API)'}
+                </button>
               </div>
               <p className="text-sm text-gray-500 mt-2">
-                The direct token test uses the new access token to test multiple API endpoints
+                The direct token test uses the new access token to test multiple API endpoints. 
+                Use refresh token to get a new access token when the current one expires.
               </p>
             </div>
 
