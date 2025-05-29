@@ -39,7 +39,8 @@ export async function GET(request: NextRequest) {
     const queryParams = new URLSearchParams({
       app_key: APP_KEY,
       timestamp: timestamp.toString(),
-      sign: sign
+      sign: sign,
+      version: '202309'  // Adding version parameter
     })
     
     const url = `${baseUrl}?${queryParams.toString()}`
