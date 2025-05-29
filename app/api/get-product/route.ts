@@ -22,10 +22,10 @@ export async function POST(request: NextRequest) {
     
     console.log('Using access token:', accessToken.substring(0, 10) + '...')
     
-    // TikTok Shop API endpoints based on Partner Center documentation
+    // TikTok Shop API endpoints - US region corrected URLs
     const endpoints = [
       {
-        name: 'TikTok Shop SDK - ProductV202309Api.ProductsProductIdGet',
+        name: 'TikTok Shop US API - Product Details V202309',
         url: `https://open-api.tiktokshop.com/product/202309/products/${productId}`,
         method: 'GET',
         headers: {
@@ -39,40 +39,24 @@ export async function POST(request: NextRequest) {
         })
       },
       {
-        name: 'TikTok Shop API - Product Details V2',
-        url: `https://open-api.tiktokshop.com/api/products/details`,
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-          'x-tts-access-token': accessToken,
-          'shop-id': shopId
-        } as Record<string, string>,
-        params: new URLSearchParams({
-          'product_id': productId,
-          'need_variant': 'true'
-        })
-      },
-      {
-        name: 'TikTok Shop API - Product Search by ID',
-        url: 'https://open-api.tiktokshop.com/api/products/search',
+        name: 'TikTok Shop US API - Product Search',
+        url: 'https://open-api.tiktokshop.com/product/202309/products/search',
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
           'x-tts-access-token': accessToken,
-          'shop-id': shopId
+          'shop-cipher': shopId
         } as Record<string, string>,
         body: JSON.stringify({
           page_size: 20,
           page_token: "",
-          search_type: 0,
           product_id: productId
         })
       },
       {
-        name: 'TikTok Shop API - Legacy Product Get',
-        url: `https://open-api.tiktokshop.com/api/v1/products/${productId}`,
+        name: 'TikTok Shop US API - Alternative Product Get',
+        url: `https://open-api-sg.tiktokshop.com/product/202309/products/${productId}`,
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -83,6 +67,17 @@ export async function POST(request: NextRequest) {
         params: new URLSearchParams({
           'need_variant': 'true'
         })
+      },
+      {
+        name: 'TikTok Shop Legacy API - Direct Product',
+        url: `https://open-api.tiktokshop.com/api/products/details/${productId}`,
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+          'x-tts-access-token': accessToken,
+          'shop-id': shopId
+        } as Record<string, string>
       }
     ]
     

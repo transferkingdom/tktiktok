@@ -16,6 +16,13 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
     
+    // If it's a test token, provide test functionality
+    const isTestToken = access_token.startsWith('act.test') || access_token === 'test'
+    
+    if (isTestToken) {
+      console.log('🧪 Test token detected, using demo mode for testing')
+    }
+    
     const cookieStore = cookies()
     
     // Store the manually provided token as TikTok Shop Partner token
@@ -36,7 +43,8 @@ export async function POST(request: NextRequest) {
     })
     
     // Mark as manual auth method
-    cookieStore.set('tiktok_shop_auth_method', 'manual_api_testing_tool', {
+    const authMethod = isTestToken ? 'manual_test_token' : 'manual_api_testing_tool'
+    cookieStore.set('tiktok_shop_auth_method', authMethod, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
@@ -50,7 +58,11 @@ export async function POST(request: NextRequest) {
       message: 'Token stored successfully',
       token_preview: `${access_token.substring(0, 20)}...`,
       shop_id: finalShopId,
-      auth_method: 'manual_api_testing_tool'
+      auth_method: authMethod,
+      is_test_token: isTestToken,
+      next_steps: isTestToken 
+        ? 'Test token set. Try fetching products to test API endpoints.'
+        : 'Real token set. You can now fetch real product data.'
     })
     
   } catch (error) {

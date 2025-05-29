@@ -21,162 +21,153 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL || 'https://tktiktok.vercel.app'}?error=${encodeURIComponent(error)}`)
     }
     
-    if (!code) {
-      console.error('❌ No authorization code received')
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL || 'https://tktiktok.vercel.app'}?error=no_code`)
+    if (!code || code === 'null') {
+      console.error('❌ No authorization code received or authorization denied')
+      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL || 'https://tktiktok.vercel.app'}?error=no_code_or_denied`)
     }
     
-    // Try multiple token exchange approaches
-    const serviceId = '7431862995146491691'
-    const clientKey = process.env.NEXT_PUBLIC_TIKTOK_CLIENT_KEY || '6e8q3qfuc5iqv'
-    const clientSecret = process.env.TIKTOK_CLIENT_SECRET || 'f1a1a446f377780021df9219cb4b029170626997'
+    // TK application parameters from documentation
+    const appKey = '6e8q3qfuc5iqv'
+    const appSecret = 'f1a1a446f377780021df9219cb4b029170626997'
+    const shopId = '7431862995146491691'
     
-    console.log('Attempting token exchange...')
-    console.log('Service ID:', serviceId)
-    console.log('Client Key:', clientKey)
+    console.log('Attempting token exchange with official endpoint...')
+    console.log('App Key:', appKey)
+    console.log('Shop ID:', shopId)
     
-    // Try TikTok Shop specific token endpoint first
-    const tokenEndpoints = [
-      {
-        name: 'TikTok Shop Services',
-        url: 'https://services.tiktokshops.us/open/token',
-        body: {
-          service_id: serviceId,
-          code: code,
-          grant_type: 'authorization_code'
+    // Official TikTok Shop token endpoint from documentation
+    const tokenEndpoint = 'https://auth.tiktok-shops.com/api/v2/token/get'
+    
+    // Create URL with parameters (GET request as per documentation)
+    const tokenUrl = new URL(tokenEndpoint)
+    tokenUrl.searchParams.append('app_key', appKey)
+    tokenUrl.searchParams.append('app_secret', appSecret)
+    tokenUrl.searchParams.append('auth_code', code)
+    tokenUrl.searchParams.append('grant_type', 'authorized_code')
+    
+    console.log('🔄 Requesting token from:', tokenUrl.toString())
+    
+    try {
+      const response = await fetch(tokenUrl.toString(), {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
         }
-      },
-      {
-        name: 'TikTok Shop Partner API',
-        url: 'https://open-api.tiktokshop.com/token',
-        body: {
-          app_key: clientKey,
-          app_secret: clientSecret,
-          auth_code: code,
-          grant_type: 'authorized_code'
-        }
-      },
-      {
-        name: 'Original Partner Center',
-        url: 'https://partner.tiktokshop.com/oauth/token',
-        body: {
-          client_key: clientKey,
-          client_secret: clientSecret,
-          code: code,
-          grant_type: 'authorization_code'
-        }
-      }
-    ]
-    
-    let tokenData = null
-    let successfulEndpoint = null
-    
-    for (const endpoint of tokenEndpoints) {
-      try {
-        console.log(`\n🔄 Trying: ${endpoint.name}`)
-        console.log(`URL: ${endpoint.url}`)
-        console.log(`Body:`, endpoint.body)
+      })
+      
+      const data = await response.json()
+      
+      console.log(`Response Status: ${response.status}`)
+      console.log(`Response:`, data)
+      
+      // Check if request was successful based on TikTok Shop response format
+      if (response.ok && data.code === 0 && data.data?.access_token) {
+        console.log('✅ Token exchange successful!')
         
-        const response = await fetch(endpoint.url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(endpoint.body)
+        // Store tokens in httpOnly cookies
+        const cookieStore = cookies()
+        
+        // Extract data from TikTok Shop response format
+        const tokenData = data.data
+        const accessToken = tokenData.access_token
+        const refreshToken = tokenData.refresh_token
+        const responseShopId = tokenData.open_id || shopId
+        const shopName = tokenData.seller_name || 'Transfer Kingdom'
+        const userType = tokenData.user_type
+        const grantedScopes = tokenData.granted_scopes
+        
+        if (accessToken) {
+          console.log('✅ Storing TikTok Shop access token')
+          const expiresIn = tokenData.access_token_expire_in 
+            ? Math.max(0, tokenData.access_token_expire_in - Math.floor(Date.now() / 1000))
+            : 86400 * 7 // 7 days default
+            
+          cookieStore.set('tiktok_shop_access_token', accessToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: expiresIn
+          })
+        }
+        
+        if (refreshToken) {
+          console.log('✅ Storing TikTok Shop refresh token')
+          const refreshExpiresIn = tokenData.refresh_token_expire_in 
+            ? Math.max(0, tokenData.refresh_token_expire_in - Math.floor(Date.now() / 1000))
+            : 86400 * 30 // 30 days default
+            
+          cookieStore.set('tiktok_shop_refresh_token', refreshToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: refreshExpiresIn
+          })
+        }
+        
+        if (responseShopId) {
+          console.log('✅ Storing TikTok Shop ID:', responseShopId)
+          cookieStore.set('tiktok_shop_id', responseShopId.toString(), {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 86400 * 30 // 30 days
+          })
+        }
+        
+        if (shopName) {
+          console.log('✅ Storing TikTok Shop Name:', shopName)
+          cookieStore.set('tiktok_shop_name', shopName, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 86400 * 30 // 30 days
+          })
+        }
+        
+        // Store additional metadata
+        if (userType !== undefined) {
+          cookieStore.set('tiktok_shop_user_type', userType.toString(), {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 86400 * 30
+          })
+        }
+        
+        if (grantedScopes && grantedScopes.length > 0) {
+          cookieStore.set('tiktok_shop_scopes', grantedScopes.join(','), {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 86400 * 30
+          })
+        }
+        
+        // Store auth method
+        cookieStore.set('tiktok_shop_auth_method', 'Official TikTok Shop API', {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          maxAge: 86400 * 30
         })
         
-        const data = await response.json()
+        console.log('✅ TikTok Shop authorization successful!')
+        console.log('📊 User Type:', userType === 0 ? 'Seller' : userType === 1 ? 'Creator' : userType === 3 ? 'Partner' : 'Unknown')
+        console.log('🔑 Granted Scopes:', grantedScopes)
         
-        console.log(`Response Status: ${response.status}`)
-        console.log(`Response:`, data)
+        // Redirect back to app with success
+        return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL || 'https://tktiktok.vercel.app'}?success=tiktok_shop_authorized&method=Official_API`)
         
-        if (response.ok && (data.access_token || data.data?.access_token)) {
-          tokenData = data
-          successfulEndpoint = endpoint.name
-          console.log(`✅ Success with: ${endpoint.name}`)
-          break
-        } else {
-          console.log(`❌ Failed with: ${endpoint.name}`)
-        }
-        
-        // Small delay between attempts
-        await new Promise(resolve => setTimeout(resolve, 300))
-        
-      } catch (error) {
-        console.error(`❌ Error with ${endpoint.name}:`, error)
+      } else {
+        console.error('❌ Token exchange failed:', data)
+        const errorMessage = data.message || 'Token exchange failed'
+        return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL || 'https://tktiktok.vercel.app'}?error=token_exchange_failed&message=${encodeURIComponent(errorMessage)}`)
       }
+      
+    } catch (fetchError) {
+      console.error('❌ Error calling token endpoint:', fetchError)
+      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL || 'https://tktiktok.vercel.app'}?error=token_request_failed&message=${encodeURIComponent(fetchError instanceof Error ? fetchError.message : 'Network error')}`)
     }
-    
-    if (!tokenData) {
-      console.error('❌ All token exchange attempts failed')
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL || 'https://tktiktok.vercel.app'}?error=token_exchange_failed&message=All endpoints failed`)
-    }
-    
-    console.log('✅ Token exchange successful via:', successfulEndpoint)
-    
-    // Store tokens in httpOnly cookies
-    const cookieStore = cookies()
-    
-    // Handle different response formats
-    const accessToken = tokenData.access_token || tokenData.data?.access_token
-    const refreshToken = tokenData.refresh_token || tokenData.data?.refresh_token
-    const shopId = tokenData.shop_id || tokenData.data?.shop_id || serviceId
-    const shopName = tokenData.shop_name || tokenData.data?.shop_name
-    
-    if (accessToken) {
-      console.log('✅ Storing TikTok Shop access token')
-      cookieStore.set('tiktok_shop_access_token', accessToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: tokenData.access_token_expire_in || 86400 // 24 hours default
-      })
-    }
-    
-    if (refreshToken) {
-      console.log('✅ Storing TikTok Shop refresh token')
-      cookieStore.set('tiktok_shop_refresh_token', refreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: tokenData.refresh_token_expire_in || 86400 * 30 // 30 days default
-      })
-    }
-    
-    if (shopId) {
-      console.log('✅ Storing TikTok Shop ID:', shopId)
-      cookieStore.set('tiktok_shop_id', shopId.toString(), {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 86400 * 30 // 30 days
-      })
-    }
-    
-    if (shopName) {
-      console.log('✅ Storing TikTok Shop Name:', shopName)
-      cookieStore.set('tiktok_shop_name', shopName, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 86400 * 30 // 30 days
-      })
-    }
-    
-    // Store which method worked
-    if (successfulEndpoint) {
-      cookieStore.set('tiktok_shop_auth_method', successfulEndpoint, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 86400 * 30 // 30 days
-      })
-    }
-    
-    console.log('✅ TikTok Shop authorization successful!')
-    
-    // Redirect back to app with success
-    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL || 'https://tktiktok.vercel.app'}?success=tiktok_shop_authorized&method=${encodeURIComponent(successfulEndpoint || 'unknown')}`)
     
   } catch (error) {
     console.error('❌ TikTok Shop Callback Error:', error)
