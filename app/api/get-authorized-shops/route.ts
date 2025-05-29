@@ -35,12 +35,12 @@ export async function GET(request: NextRequest) {
     const sign = generateSignature(timestamp, APP_KEY, APP_SECRET)
     
     // Construct URL with query parameters
-    const baseUrl = 'https://api-us.tiktokshop.com/authorization/202309/seller/shops'
+    const baseUrl = 'https://open-api.us.tiktokshop.com/authorization/202309/seller/shops'
     const queryParams = new URLSearchParams({
       app_key: APP_KEY,
       timestamp: timestamp.toString(),
       sign: sign,
-      version: '202309'  // Adding version parameter
+      version: '202309'
     })
     
     const url = `${baseUrl}?${queryParams.toString()}`
@@ -51,7 +51,8 @@ export async function GET(request: NextRequest) {
       method: 'GET',
       headers: {
         'content-type': 'application/json',
-        'x-tts-access-token': accessToken
+        'x-tts-access-token': accessToken,
+        'User-Agent': 'TikTok Shop API Client'
       }
     })
     

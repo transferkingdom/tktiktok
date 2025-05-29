@@ -30,13 +30,13 @@ export async function POST(request: NextRequest) {
     const endpoints = [
       {
         name: 'TikTok Shop API - Product Details V202309',
-        url: `https://api-us.tiktokshop.com/product/202309/products/${productId}`,
+        url: `https://open-api.us.tiktokshop.com/product/202309/products/${productId}`,
         method: 'GET',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,
-          'X-Tts-Access-Token': accessToken,
-          'Shop-Id': shopId
+          'content-type': 'application/json',
+          'x-tts-access-token': accessToken,
+          'shop-id': shopId,
+          'User-Agent': 'TikTok Shop API Client'
         } as Record<string, string>,
         params: new URLSearchParams({
           'need_variant': 'true',
@@ -45,13 +45,13 @@ export async function POST(request: NextRequest) {
       },
       {
         name: 'TikTok Shop API - Product Search V202309',
-        url: 'https://api-us.tiktokshop.com/product/202309/products/search',
+        url: 'https://open-api.us.tiktokshop.com/product/202309/products/search',
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,
-          'X-Tts-Access-Token': accessToken,
-          'Shop-Id': shopId
+          'content-type': 'application/json',
+          'x-tts-access-token': accessToken,
+          'shop-id': shopId,
+          'User-Agent': 'TikTok Shop API Client'
         } as Record<string, string>,
         body: JSON.stringify({
           page_size: 20,
