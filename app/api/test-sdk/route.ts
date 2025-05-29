@@ -59,23 +59,52 @@ export async function POST(request: NextRequest) {
       
     } catch (apiError: any) {
       console.error('❌ SDK API Error:', apiError)
+      console.error('❌ Error name:', apiError.name)
+      console.error('❌ Error message:', apiError.message)
+      console.error('❌ Error stack:', apiError.stack)
       
       let errorDetails = {
+        name: apiError.name,
         message: apiError.message,
         status: apiError.status,
-        body: apiError.body
+        statusCode: null,
+        statusMessage: null,
+        body: null,
+        responseText: null
       }
       
       if (apiError.response) {
-        errorDetails.status = apiError.response.statusCode
-        console.error('Error response status:', apiError.response.statusCode)
-        console.error('Error response body:', apiError.body)
+        errorDetails.statusCode = apiError.response.statusCode
+        errorDetails.statusMessage = apiError.response.statusMessage
+        console.error('❌ Error response status:', apiError.response.statusCode)
+        console.error('❌ Error response statusMessage:', apiError.response.statusMessage)
+        console.error('❌ Error response headers:', apiError.response.headers)
+        console.error('❌ Error response body:', apiError.body)
+        
+        if (apiError.body) {
+          errorDetails.body = apiError.body
+        }
+      }
+      
+      // Try to get response text if available
+      if (apiError.response && apiError.response.text) {
+        try {
+          errorDetails.responseText = apiError.response.text
+        } catch (e) {
+          console.error('Could not read response text:', e)
+        }
       }
       
       return NextResponse.json({
         success: false,
         message: 'SDK API call failed',
-        error: errorDetails
+        error: errorDetails,
+        debug: {
+          errorType: typeof apiError,
+          hasResponse: !!apiError.response,
+          hasBody: !!apiError.body,
+          keys: Object.keys(apiError)
+        }
       })
     }
     
