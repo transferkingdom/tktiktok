@@ -21,18 +21,19 @@ export async function GET(request: NextRequest) {
     console.log('Using access token:', accessToken.substring(0, 10) + '...')
     
     // Call TikTok Shop API to get authorized shops
-    const response = await fetch('https://open-api.tiktokglobalshop.com/authorization/202309/shops', {
+    const response = await fetch('https://open-api.tiktokglobalshop.com/api/authorization/v2/shops', {
       method: 'GET',
       headers: {
+        'Accept': 'application/json',
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${accessToken}`,
-        'X-Tts-Access-Token': accessToken
+        'Access-Token': accessToken
       }
     })
     
     const data = await response.json()
     console.log('Response status:', response.status)
     console.log('Response keys:', Object.keys(data || {}))
+    console.log('Response data:', JSON.stringify(data, null, 2))
     
     if (!response.ok) {
       return NextResponse.json(
