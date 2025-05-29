@@ -43,6 +43,7 @@ export default function Home() {
   const [productLoading, setProductLoading] = useState<boolean>(false)
   const [editingVariants, setEditingVariants] = useState<Record<string, string>>({})
   const [updatingPrices, setUpdatingPrices] = useState<Record<string, boolean>>({})
+  const [isDemoMode, setIsDemoMode] = useState<boolean>(false)
 
   useEffect(() => {
     // Check authorization status from server
@@ -65,22 +66,22 @@ export default function Home() {
       }
     }
     
-    // URL parametrelerini logla
+    // Log URL parameters
     const urlParams = new URLSearchParams(window.location.search)
     console.log('=== Frontend URL Parameters ===')
     urlParams.forEach((value: string, key: string) => {
       console.log(`${key}: ${value}`)
     })
     
-    // Eğer success parametresi varsa, biraz bekle ve auth status kontrol et
+    // If success parameter exists, wait a bit and check auth status
     if (urlParams.get('success') === 'authorized') {
       console.log('✅ Authorization redirect detected, checking status...')
-      setTimeout(checkAuthStatus, 1000) // 1 saniye bekle
+      setTimeout(checkAuthStatus, 1000) // Wait 1 second
     } else {
       checkAuthStatus()
     }
     
-    // Hata kontrolü
+    // Error handling
     const error = urlParams.get('error')
     if (error) {
       console.log('Authorization error:', error)
@@ -107,7 +108,7 @@ export default function Home() {
     const redirectUri = process.env.NEXT_PUBLIC_TIKTOK_REDIRECT_URI || 'http://localhost:3000/api/auth/callback'
     const scope = 'user.info.basic'
     
-    // TikTok OAuth URL - normal TikTok endpoint kullanıyoruz (TikTok Shop için de aynı)
+    // TikTok OAuth URL - using normal TikTok endpoint (same for TikTok Shop)
     const authUrl = `https://www.tiktok.com/v2/auth/authorize/?client_key=${clientKey}&response_type=code&scope=${scope}&redirect_uri=${encodeURIComponent(redirectUri)}&state=tiktok_shop_auth`
     
     window.location.href = authUrl
@@ -154,6 +155,7 @@ export default function Home() {
 
     setProductLoading(true)
     setProduct(null)
+    setIsDemoMode(false)
     
     try {
       console.log('📦 Fetching product:', productId)
@@ -175,6 +177,7 @@ export default function Home() {
         console.log('📋 Product details:', result.product)
         
         setProduct(result.product)
+        setIsDemoMode(result.is_demo || false)
         
         // Initialize editing prices with current prices
         const initialPrices: Record<string, string> = {}
@@ -206,6 +209,11 @@ export default function Home() {
     const newPrice = editingVariants[variant.id]
     
     if (!newPrice || newPrice === variant.price.original) {
+      return
+    }
+
+    if (isDemoMode) {
+      alert('This is demo mode. Real price updates are disabled.\n\nTo test real price updates, ensure your TikTok Shop API is properly configured.')
       return
     }
 
@@ -282,42 +290,42 @@ export default function Home() {
             TikTok Shop Price Updater
           </h1>
           <p className="text-gray-600">
-            Gerçek ürün bilgilerini çekip fiyatları güncelleyin
+            Fetch real product data and update prices efficiently
           </p>
         </div>
 
         {!isAuthorized ? (
           <div className="card text-center">
             <h2 className="text-xl font-semibold mb-4">
-              TikTok Shop Yetkilendirmesi
+              Authorize TikTok Shop Access
             </h2>
             <p className="text-gray-600 mb-6">
-              TikTok Shop hesabınızı bağlayarak ürün fiyatlarını yönetin
+              Connect your TikTok Shop account to manage product pricing
             </p>
             <button
               onClick={handleAuthorize}
               className="btn-primary text-lg px-8 py-3"
             >
-              TikTok Shop'a Bağlan
+              Connect TikTok Shop
             </button>
           </div>
         ) : (
           <div className="space-y-6">
             {/* Token Management */}
             <div className="card">
-              <h2 className="text-xl font-semibold mb-4">Token Yönetimi</h2>
+              <h2 className="text-xl font-semibold mb-4">Token Management</h2>
               <button
                 onClick={handleRefreshToken}
                 disabled={refreshTokenLoading}
                 className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed bg-blue-600 hover:bg-blue-700"
               >
-                {refreshTokenLoading ? 'Token Yenileniyor...' : '🔄 Access Token Yenile'}
+                {refreshTokenLoading ? 'Refreshing Token...' : '🔄 Refresh Access Token'}
               </button>
             </div>
 
             {/* Product Fetch */}
             <div className="card">
-              <h2 className="text-xl font-semibold mb-4">Ürün Bilgilerini Getir</h2>
+              <h2 className="text-xl font-semibold mb-4">Fetch Product Information</h2>
               <div className="flex gap-4 items-end">
                 <div className="flex-1">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -327,7 +335,7 @@ export default function Home() {
                     type="text"
                     value={productId}
                     onChange={(e) => setProductId(e.target.value)}
-                    placeholder="Ürün ID'sini girin"
+                    placeholder="Enter product ID"
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -336,7 +344,7 @@ export default function Home() {
                   disabled={productLoading}
                   className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed bg-green-600 hover:bg-green-700 px-6 py-2"
                 >
-                  {productLoading ? 'Getiriliyor...' : '📦 Ürünü Getir'}
+                  {productLoading ? 'Fetching...' : '📦 Get Product'}
                 </button>
               </div>
             </div>
@@ -344,7 +352,14 @@ export default function Home() {
             {/* Product Details & Price Editing */}
             {product && (
               <div className="card">
-                <h2 className="text-xl font-semibold mb-4">Ürün Detayları ve Fiyat Düzenleme</h2>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-semibold">Product Details & Price Editing</h2>
+                  {isDemoMode && (
+                    <span className="px-3 py-1 bg-yellow-100 text-yellow-800 text-sm rounded-full">
+                      📝 Demo Mode - API Testing
+                    </span>
+                  )}
+                </div>
                 
                 {/* Product Info */}
                 <div className="bg-gray-50 p-4 rounded-lg mb-6">
@@ -377,16 +392,16 @@ export default function Home() {
                           SKU
                         </th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Mevcut Fiyat
+                          Current Price
                         </th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Yeni Fiyat
+                          New Price
                         </th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Stok
+                          Quantity
                         </th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          İşlem
+                          Action
                         </th>
                       </tr>
                     </thead>
@@ -424,7 +439,7 @@ export default function Home() {
                               }
                               className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                              {updatingPrices[variant.id] ? 'Güncelleniyor...' : 'Güncelle'}
+                              {updatingPrices[variant.id] ? 'Updating...' : 'Update'}
                             </button>
                           </td>
                         </tr>
@@ -437,9 +452,9 @@ export default function Home() {
 
             {/* Legacy Price Rules - Keep for batch updates */}
             <div className="card">
-              <h2 className="text-xl font-semibold mb-4">Toplu Fiyat Kuralları</h2>
+              <h2 className="text-xl font-semibold mb-4">Bulk Price Rules</h2>
               <p className="text-gray-600 mb-4">
-                Variant başlıklarına göre fiyat kuralları belirleyin
+                Set pricing rules based on variant titles
               </p>
               
               <div className="space-y-4">
@@ -447,7 +462,7 @@ export default function Home() {
                   <div key={index} className="flex gap-4 items-center">
                     <input
                       type="text"
-                      placeholder="Variant başlığı (örn: 'Small', 'Large')"
+                      placeholder="Variant title (e.g., 'Small', 'Large')"
                       value={rule.variant}
                       onChange={(e) => updatePriceRule(index, 'variant', e.target.value)}
                       className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -455,7 +470,7 @@ export default function Home() {
                     <input
                       type="number"
                       step="0.01"
-                      placeholder="Fiyat"
+                      placeholder="Price"
                       value={rule.price}
                       onChange={(e) => updatePriceRule(index, 'price', e.target.value)}
                       className="w-32 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -464,7 +479,7 @@ export default function Home() {
                       onClick={() => removePriceRule(index)}
                       className="text-red-600 hover:text-red-800 px-2"
                     >
-                      Kaldır
+                      Remove
                     </button>
                   </div>
                 ))}
@@ -473,7 +488,7 @@ export default function Home() {
                   onClick={addPriceRule}
                   className="btn-secondary"
                 >
-                  Fiyat Kuralı Ekle
+                  Add Price Rule
                 </button>
               </div>
             </div>
