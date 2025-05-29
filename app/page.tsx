@@ -54,6 +54,13 @@ export default function Home() {
         
         if (data.authorized) {
           console.log('✅ User is authorized')
+          console.log('Auth type:', data.auth_type)
+          console.log('Token type:', data.token_type)
+          
+          if (data.warning) {
+            console.warn('⚠️ Auth warning:', data.warning)
+          }
+          
           setIsAuthorized(true)
         } else {
           console.log('❌ User not authorized')
@@ -72,10 +79,14 @@ export default function Home() {
       console.log(`${key}: ${value}`)
     })
     
-    // If success parameter exists, wait a bit and check auth status
-    if (urlParams.get('success') === 'authorized') {
-      console.log('✅ Authorization redirect detected, checking status...')
-      setTimeout(checkAuthStatus, 1000) // Wait 1 second
+    // Check for different success types
+    const successType = urlParams.get('success')
+    if (successType === 'tiktok_shop_authorized') {
+      console.log('✅ TikTok Shop Partner authorization redirect detected, checking status...')
+      setTimeout(checkAuthStatus, 1000)
+    } else if (successType === 'authorized') {
+      console.log('✅ Legacy authorization redirect detected, checking status...')
+      setTimeout(checkAuthStatus, 1000)
     } else {
       checkAuthStatus()
     }

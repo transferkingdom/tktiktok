@@ -3,59 +3,74 @@ import { cookies } from 'next/headers'
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('=== Checking Auth Status ===')
-    
     const cookieStore = cookies()
     
-    // Check for TikTok Shop Partner tokens first (preferred)
-    const tiktokShopAccessToken = cookieStore.get('tiktok_shop_access_token')?.value
-    const tiktokShopId = cookieStore.get('tiktok_shop_id')?.value
+    // Check for TikTok Shop Partner tokens first (highest priority)
+    const shopAccessToken = cookieStore.get('tiktok_shop_access_token')?.value
+    const shopRefreshToken = cookieStore.get('tiktok_shop_refresh_token')?.value
+    const shopId = cookieStore.get('tiktok_shop_id')?.value
+    const shopName = cookieStore.get('tiktok_shop_name')?.value
+    const authMethod = cookieStore.get('tiktok_shop_auth_method')?.value
     
-    // Check for legacy TikTok tokens 
-    const legacyAccessToken = cookieStore.get('tiktok_access_token')?.value
-    const legacyShopId = cookieStore.get('shop_id')?.value
-    
-    console.log('TikTok Shop Partner Token:', tiktokShopAccessToken ? 'Present' : 'Missing')
-    console.log('TikTok Shop Partner Shop ID:', tiktokShopId || 'Missing')
-    console.log('Legacy TikTok Token:', legacyAccessToken ? 'Present' : 'Missing')
-    console.log('Legacy Shop ID:', legacyShopId || 'Missing')
-    
-    // Prefer TikTok Shop Partner authentication
-    if (tiktokShopAccessToken) {
-      console.log('✅ User authorized via TikTok Shop Partner')
+    if (shopAccessToken) {
+      console.log('✅ TikTok Shop Partner authentication found')
       return NextResponse.json({
         authorized: true,
         auth_type: 'tiktok_shop_partner',
-        shop_id: tiktokShopId,
-        token_type: 'TikTok Shop Partner'
+        token_type: 'shop_partner',
+        token_info: {
+          access_token: `${shopAccessToken.substring(0, 20)}...`,
+          access_token_length: shopAccessToken.length,
+          refresh_token_present: !!shopRefreshToken,
+          shop_id: shopId,
+          shop_name: shopName,
+          auth_method: authMethod
+        },
+        warning: null
       })
     }
     
-    // Fallback to legacy TikTok authentication
-    if (legacyAccessToken) {
-      console.log('⚠️ User authorized via Legacy TikTok (may not work with Shop APIs)')
+    // Check for legacy TikTok tokens (lower priority)
+    const accessToken = cookieStore.get('tiktok_access_token')?.value
+    const refreshToken = cookieStore.get('tiktok_refresh_token')?.value
+    const legacyShopId = cookieStore.get('shop_id')?.value
+    const sellerName = cookieStore.get('seller_name')?.value
+    
+    if (accessToken) {
+      console.log('⚠️ Legacy TikTok authentication found')
       return NextResponse.json({
         authorized: true,
         auth_type: 'legacy_tiktok',
-        shop_id: legacyShopId,
-        token_type: 'Legacy TikTok',
+        token_type: 'social_media',
+        token_info: {
+          access_token: `${accessToken.substring(0, 20)}...`,
+          access_token_length: accessToken.length,
+          refresh_token_present: !!refreshToken,
+          shop_id: legacyShopId,
+          seller_name: sellerName
+        },
         warning: 'Using legacy TikTok token - TikTok Shop Partner authentication recommended'
       })
     }
     
-    console.log('❌ User not authorized')
+    // No authentication found
+    console.log('❌ No authentication found')
     return NextResponse.json({
       authorized: false,
       auth_type: null,
-      message: 'No valid authentication tokens found'
+      token_type: null,
+      token_info: null,
+      warning: null
     })
     
   } catch (error) {
-    console.error('❌ Auth Status Error:', error)
+    console.error('❌ Auth status check error:', error)
     return NextResponse.json({
       authorized: false,
-      error: 'Failed to check auth status',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      auth_type: 'error',
+      token_type: null,
+      token_info: null,
+      warning: `Error checking authentication: ${error instanceof Error ? error.message : 'Unknown error'}`
     }, { status: 500 })
   }
 } 
