@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     const endpoints = [
       {
         name: 'TikTok Shop API - Product Details V202309',
-        url: `https://open-api.tiktokshop.com/product/202309/products/${productId}`,
+        url: `https://api-us.tiktokshop.com/product/202309/products/${productId}`,
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
       },
       {
         name: 'TikTok Shop API - Product Search V202309',
-        url: 'https://open-api.tiktokshop.com/product/202309/products/search',
+        url: 'https://api-us.tiktokshop.com/product/202309/products/search',
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
