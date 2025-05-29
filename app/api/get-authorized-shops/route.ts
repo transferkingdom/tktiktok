@@ -5,8 +5,9 @@ import crypto from 'crypto'
 const APP_KEY = '6e8q3qfuc5iqv'
 const APP_SECRET = 'f1a1a446f377780021df9219cb4b029170626997'
 
-function generateSignature(timestamp: number, appKey: string, accessToken: string, appSecret: string) {
-  const signString = `app_key${appKey}access_token${accessToken}timestamp${timestamp}${appSecret}`
+function generateSignature(timestamp: number, appKey: string, appSecret: string) {
+  // Format: app_key{app_key}timestamp{timestamp}{app_secret}
+  const signString = `app_key${appKey}timestamp${timestamp}${appSecret}`
   return crypto.createHash('sha256').update(signString).digest('hex')
 }
 
@@ -31,15 +32,14 @@ export async function GET(request: NextRequest) {
 
     // Generate timestamp and signature
     const timestamp = Math.floor(Date.now() / 1000)
-    const sign = generateSignature(timestamp, APP_KEY, accessToken, APP_SECRET)
+    const sign = generateSignature(timestamp, APP_KEY, APP_SECRET)
     
     // Construct URL with query parameters
-    const baseUrl = 'https://open-api.tiktokglobalshop.com/api/shops/get_authorized_shop'
+    const baseUrl = 'https://api-us.tiktokshop.com/authorization/202309/seller/shops'
     const queryParams = new URLSearchParams({
       app_key: APP_KEY,
       timestamp: timestamp.toString(),
-      sign: sign,
-      access_token: accessToken
+      sign: sign
     })
     
     const url = `${baseUrl}?${queryParams.toString()}`
@@ -49,8 +49,8 @@ export async function GET(request: NextRequest) {
     const response = await fetch(url, {
       method: 'GET',
       headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
+        'content-type': 'application/json',
+        'x-tts-access-token': accessToken
       }
     })
     
@@ -60,10 +60,14 @@ export async function GET(request: NextRequest) {
     console.log('Response data:', JSON.stringify(data, null, 2))
     
     if (!response.ok) {
+      console.error('Error response:', data)
       return NextResponse.json(
         { 
           error: 'Failed to get authorized shops',
-          details: data
+          details: data,
+          request_url: url,
+          timestamp: timestamp,
+          sign: sign
         },
         { status: response.status }
       )
