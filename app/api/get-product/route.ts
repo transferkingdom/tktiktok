@@ -34,11 +34,13 @@ export async function POST(request: NextRequest) {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'x-tts-access-token': accessToken,
-          'shop-id': shopId
+          'Authorization': `Bearer ${accessToken}`,
+          'X-Tts-Access-Token': accessToken,
+          'Shop-Id': shopId
         } as Record<string, string>,
         params: new URLSearchParams({
-          'need_variant': 'true'
+          'need_variant': 'true',
+          'product_status': 'ACTIVATE'
         })
       },
       {
@@ -47,14 +49,16 @@ export async function POST(request: NextRequest) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-tts-access-token': accessToken,
-          'shop-id': shopId
+          'Authorization': `Bearer ${accessToken}`,
+          'X-Tts-Access-Token': accessToken,
+          'Shop-Id': shopId
         } as Record<string, string>,
         body: JSON.stringify({
           page_size: 20,
           page_number: 1,
           search_type: "product_id",
-          search_content: productId
+          search_content: productId,
+          product_status: "ACTIVATE"
         })
       }
     ]
