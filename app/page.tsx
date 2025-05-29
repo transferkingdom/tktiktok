@@ -208,6 +208,47 @@ Check console for full details.`)
     }
   }
 
+  const handleTestAuth = async () => {
+    try {
+      console.log('🧪 Testing TikTok Shop authentication...')
+      
+      const response = await fetch('/api/test-auth', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+      
+      const result = await response.json()
+      
+      console.log('🧪 Test auth response:', result)
+      
+      if (response.ok && result.success) {
+        const successCount = result.test_results.filter((r: any) => r.success).length
+        const totalCount = result.test_results.length
+        
+        alert(`🧪 Authentication Test Results:
+
+Access Token: ${result.access_token_info.present ? '✅ Present' : '❌ Missing'}
+Length: ${result.access_token_info.length}
+Preview: ${result.access_token_info.preview}
+
+Shop ID: ${result.shop_id}
+
+Endpoint Tests: ${successCount}/${totalCount} successful
+
+Conclusion: ${result.conclusion}
+
+Check console for detailed results.`)
+      } else {
+        alert(`Test failed: ${result.error}`)
+      }
+    } catch (error) {
+      console.error('💥 Error testing auth:', error)
+      alert('Error testing authentication')
+    }
+  }
+
   const handleGetProduct = async () => {
     if (!productId.trim()) {
       alert('Please enter a product ID')
@@ -387,6 +428,12 @@ Check console for full details.`)
                   className="btn-secondary bg-red-600 hover:bg-red-700 text-white"
                 >
                   🔧 Fix Shop ID
+                </button>
+                <button
+                  onClick={handleTestAuth}
+                  className="btn-secondary bg-purple-600 hover:bg-purple-700 text-white"
+                >
+                  🧪 Test Auth
                 </button>
               </div>
             </div>
