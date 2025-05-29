@@ -3,37 +3,59 @@ import { cookies } from 'next/headers'
 
 export async function GET(request: NextRequest) {
   try {
-    const cookieStore = cookies()
-    const accessToken = cookieStore.get('tiktok_access_token')?.value
-    const shopId = cookieStore.get('tiktok_shop_id')?.value
+    console.log('=== Checking Auth Status ===')
     
-    console.log('Auth status check:', {
-      hasAccessToken: !!accessToken,
-      hasShopId: !!shopId,
-      tokenValue: accessToken?.substring(0, 15) + '...' || 'none',
-      allCookies: cookieStore.getAll().map(c => c.name)
-    })
-
-    // Herhangi bir access token varsa authorized say
-    if (accessToken) {
+    const cookieStore = cookies()
+    
+    // Check for TikTok Shop Partner tokens first (preferred)
+    const tiktokShopAccessToken = cookieStore.get('tiktok_shop_access_token')?.value
+    const tiktokShopId = cookieStore.get('tiktok_shop_id')?.value
+    
+    // Check for legacy TikTok tokens 
+    const legacyAccessToken = cookieStore.get('tiktok_access_token')?.value
+    const legacyShopId = cookieStore.get('shop_id')?.value
+    
+    console.log('TikTok Shop Partner Token:', tiktokShopAccessToken ? 'Present' : 'Missing')
+    console.log('TikTok Shop Partner Shop ID:', tiktokShopId || 'Missing')
+    console.log('Legacy TikTok Token:', legacyAccessToken ? 'Present' : 'Missing')
+    console.log('Legacy Shop ID:', legacyShopId || 'Missing')
+    
+    // Prefer TikTok Shop Partner authentication
+    if (tiktokShopAccessToken) {
+      console.log('✅ User authorized via TikTok Shop Partner')
       return NextResponse.json({
         authorized: true,
-        shop_id: shopId,
-        token_type: accessToken.includes('shop_authorized') ? 'shop' : 'oauth',
-        token_preview: accessToken.substring(0, 15) + '...'
+        auth_type: 'tiktok_shop_partner',
+        shop_id: tiktokShopId,
+        token_type: 'TikTok Shop Partner'
       })
     }
-
+    
+    // Fallback to legacy TikTok authentication
+    if (legacyAccessToken) {
+      console.log('⚠️ User authorized via Legacy TikTok (may not work with Shop APIs)')
+      return NextResponse.json({
+        authorized: true,
+        auth_type: 'legacy_tiktok',
+        shop_id: legacyShopId,
+        token_type: 'Legacy TikTok',
+        warning: 'Using legacy TikTok token - TikTok Shop Partner authentication recommended'
+      })
+    }
+    
+    console.log('❌ User not authorized')
     return NextResponse.json({
       authorized: false,
-      reason: 'No access token found',
-      available_cookies: cookieStore.getAll().map(c => c.name)
+      auth_type: null,
+      message: 'No valid authentication tokens found'
     })
+    
   } catch (error) {
-    console.error('Error checking auth status:', error)
-    return NextResponse.json(
-      { authorized: false, error: 'Internal server error' },
-      { status: 500 }
-    )
+    console.error('❌ Auth Status Error:', error)
+    return NextResponse.json({
+      authorized: false,
+      error: 'Failed to check auth status',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
   }
 } 

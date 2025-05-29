@@ -113,6 +113,11 @@ export default function Home() {
     window.location.href = authUrl
   }
 
+  const handleTikTokShopAuth = () => {
+    // Direct to TikTok Shop Partner authorization endpoint
+    window.location.href = '/api/auth/tiktok-shop'
+  }
+
   const handleRefreshToken = async () => {
     setRefreshTokenLoading(true)
     try {
@@ -395,14 +400,25 @@ Check console for detailed results.`)
               Authorize TikTok Shop Access
             </h2>
             <p className="text-gray-600 mb-6">
-              Connect your TikTok Shop account to manage product pricing
+              Connect your TikTok Shop Partner account to manage product pricing
             </p>
-            <button
-              onClick={handleAuthorize}
-              className="btn-primary text-lg px-8 py-3"
-            >
-              Connect TikTok Shop
-            </button>
+            <div className="space-y-4">
+              <button
+                onClick={handleTikTokShopAuth}
+                className="btn-primary text-lg px-8 py-3 bg-red-600 hover:bg-red-700"
+              >
+                🏪 Connect TikTok Shop Partner
+              </button>
+              <div className="text-sm text-gray-500">
+                Or try legacy TikTok authentication:
+              </div>
+              <button
+                onClick={handleAuthorize}
+                className="btn-secondary text-sm px-6 py-2"
+              >
+                Connect TikTok (Legacy)
+              </button>
+            </div>
           </div>
         ) : (
           <div className="space-y-6">
