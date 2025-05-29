@@ -293,6 +293,54 @@ Check console for detailed results.`)
     }
   }
 
+  const handleManualToken = async () => {
+    const accessToken = prompt('🔑 Enter Access Token from TikTok Shop Partner API Testing Tool:')
+    
+    if (!accessToken || !accessToken.trim()) {
+      alert('❌ Access token is required!')
+      return
+    }
+    
+    const shopId = prompt('🏪 Enter Shop ID (optional, will use default if empty):') || '7431862995146491691'
+    
+    try {
+      console.log('🔧 Setting manual token...')
+      
+      const response = await fetch('/api/manual-token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          access_token: accessToken.trim(),
+          shop_id: shopId.trim()
+        }),
+      })
+      
+      const result = await response.json()
+      
+      console.log('🔧 Manual token response:', result)
+      
+      if (response.ok && result.success) {
+        alert(`✅ Token Set Successfully!
+
+Token Preview: ${result.token_preview}
+Shop ID: ${result.shop_id}
+Auth Method: ${result.auth_method}
+
+Page will reload to show authorized state.`)
+        
+        // Reload page to show authorized UI
+        window.location.reload()
+      } else {
+        alert(`❌ Failed to set token: ${result.error}`)
+      }
+    } catch (error) {
+      console.error('💥 Error setting manual token:', error)
+      alert('Error setting manual token')
+    }
+  }
+
   const handleGetProduct = async () => {
     if (!productId.trim()) {
       alert('Please enter a product ID')
@@ -456,6 +504,15 @@ Check console for detailed results.`)
                 className="btn-secondary text-sm px-6 py-2"
               >
                 Connect TikTok (Legacy)
+              </button>
+              <div className="text-sm text-gray-500 mt-4">
+                Authorization failing? Try manual token:
+              </div>
+              <button
+                onClick={handleManualToken}
+                className="btn-secondary text-sm px-6 py-2 bg-green-600 hover:bg-green-700 text-white"
+              >
+                🔧 Manual Token Input
               </button>
             </div>
           </div>
