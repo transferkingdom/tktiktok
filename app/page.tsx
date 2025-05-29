@@ -44,6 +44,8 @@ export default function Home() {
   const [productLoading, setProductLoading] = useState<boolean>(false)
   const [editingVariants, setEditingVariants] = useState<Record<string, string>>({})
   const [updatingPrices, setUpdatingPrices] = useState<Record<string, boolean>>({})
+  const [error, setError] = useState<string | null>(null)
+  const [details, setDetails] = useState<string | null>(null)
 
   useEffect(() => {
     // Check authorization status from server
@@ -92,25 +94,20 @@ export default function Home() {
       checkAuthStatus()
     }
     
-    // Error handling
-    const error = urlParams.get('error')
-    if (error) {
-      console.log('Authorization error:', error)
-      const debug = urlParams.get('debug')
-      const details = urlParams.get('details')
-      const message = urlParams.get('message')
-      
-      if (debug) {
-        console.log('Debug info:', JSON.parse(decodeURIComponent(debug)))
+    // Check URL parameters for errors
+    const errorParam = urlParams.get('error')
+    const detailsParam = urlParams.get('details')
+
+    if (errorParam) {
+      setError(errorParam)
+      if (detailsParam) {
+        try {
+          const decodedDetails = decodeURIComponent(detailsParam)
+          setDetails(decodedDetails)
+        } catch (e) {
+          setDetails(detailsParam)
+        }
       }
-      if (details) {
-        console.log('Error details:', JSON.parse(decodeURIComponent(details)))
-      }
-      if (message) {
-        console.log('Error message:', decodeURIComponent(message))
-      }
-      
-      alert(`Authorization failed: ${error}\nCheck console for details.`)
     }
   }, [])
 
@@ -478,6 +475,25 @@ Page will reload to show authorized state.`)
           <p className="text-gray-600 mb-8">
             TikTok Shop hesabınızı bağlayarak ürünlerinizi yönetmeye başlayın.
           </p>
+
+          {error && (
+            <div className="mb-8 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <h2 className="text-red-700 font-semibold mb-2">Hata Oluştu</h2>
+              <p className="text-red-600">{error === 'token_failed' ? 'Token alınamadı' : 
+                error === 'invalid_token_response' ? 'Geçersiz token yanıtı' :
+                error === 'callback_error' ? 'Callback işlemi başarısız' :
+                'Bilinmeyen hata'}</p>
+              {details && (
+                <pre className="mt-2 p-2 bg-red-100 rounded text-sm text-red-800 overflow-x-auto">
+                  {details}
+                </pre>
+              )}
+              <p className="mt-4 text-sm text-red-600">
+                Lütfen tekrar deneyin veya sistem yöneticinize başvurun.
+              </p>
+            </div>
+          )}
+
           <TiktokAuthButton />
         </div>
       </div>

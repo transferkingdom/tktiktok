@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
     // Get environment variables
     const appKey = process.env.TIKTOK_CLIENT_KEY
     const appSecret = process.env.TIKTOK_CLIENT_SECRET
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://tktiktok.vercel.app'
 
     if (!appKey || !appSecret) {
       console.error('Missing app credentials')
@@ -54,10 +55,7 @@ export async function GET(request: NextRequest) {
       tokenData = JSON.parse(rawResponse)
     } catch (e) {
       console.error('Failed to parse token response:', e)
-      return NextResponse.json({ 
-        error: 'Invalid token response',
-        raw_response: rawResponse.substring(0, 200) // First 200 chars for debugging
-      }, { status: 500 })
+      return NextResponse.redirect(`${baseUrl}?error=invalid_token_response`)
     }
 
     console.log('Parsed token response:', JSON.stringify(tokenData, null, 2))
@@ -101,20 +99,15 @@ export async function GET(request: NextRequest) {
       }
 
       console.log('Authorization successful - redirecting to dashboard')
-      return NextResponse.redirect('/dashboard')
+      return NextResponse.redirect(`${baseUrl}/dashboard`)
     }
 
     console.error('Failed to get access token:', tokenData)
-    return NextResponse.json({ 
-      error: 'Failed to get access token',
-      details: tokenData 
-    }, { status: 500 })
+    return NextResponse.redirect(`${baseUrl}?error=token_failed&details=${encodeURIComponent(JSON.stringify(tokenData))}`)
     
   } catch (error) {
     console.error('Callback processing error:', error)
-    return NextResponse.json({ 
-      error: 'Authorization failed',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 })
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://tktiktok.vercel.app'
+    return NextResponse.redirect(`${baseUrl}?error=callback_error&details=${encodeURIComponent(error instanceof Error ? error.message : 'Unknown error')}`)
   }
 } 
