@@ -9,6 +9,8 @@ export async function GET(request: NextRequest) {
     const code = searchParams.get('code')
     const state = searchParams.get('state')
     
+    console.log('Full URL:', request.url)
+    console.log('All params:', Object.fromEntries(searchParams.entries()))
     console.log('Received code:', code?.substring(0, 10) + '...')
     console.log('Received state:', state)
     
@@ -26,22 +28,39 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Configuration error' }, { status: 500 })
     }
 
-    // Exchange auth code for access token using the correct endpoint
-    const tokenResponse = await fetch('https://services.tiktokshops.us/api/v2/token/get', {
-      method: 'POST',
+    // Construct token URL with parameters
+    const tokenUrl = new URL('https://auth.tiktok-shops.com/api/v2/token/get')
+    tokenUrl.searchParams.append('app_key', appKey)
+    tokenUrl.searchParams.append('app_secret', appSecret)
+    tokenUrl.searchParams.append('auth_code', code)
+    tokenUrl.searchParams.append('grant_type', 'authorized_code')
+
+    console.log('Token URL:', tokenUrl.toString().replace(appSecret, '***'))
+
+    const tokenResponse = await fetch(tokenUrl.toString(), {
+      method: 'GET',
       headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        app_key: appKey,
-        app_secret: appSecret,
-        auth_code: code,
-        grant_type: 'authorized_code'
-      })
+        'Accept': 'application/json',
+        'Cache-Control': 'no-cache'
+      }
     })
 
-    const tokenData = await tokenResponse.json()
-    console.log('Token response:', JSON.stringify(tokenData, null, 2))
+    // Log the raw response for debugging
+    const rawResponse = await tokenResponse.text()
+    console.log('Raw token response:', rawResponse)
+
+    let tokenData
+    try {
+      tokenData = JSON.parse(rawResponse)
+    } catch (e) {
+      console.error('Failed to parse token response:', e)
+      return NextResponse.json({ 
+        error: 'Invalid token response',
+        raw_response: rawResponse.substring(0, 200) // First 200 chars for debugging
+      }, { status: 500 })
+    }
+
+    console.log('Parsed token response:', JSON.stringify(tokenData, null, 2))
     
     if (tokenData.data?.access_token) {
       // Store access token in cookies
@@ -62,9 +81,18 @@ export async function GET(request: NextRequest) {
         })
       }
 
-      // Store shop ID if available
-      if (tokenData.data.shop_id) {
-        cookies().set('tiktok_shop_id', tokenData.data.shop_id, {
+      // Store additional data
+      if (tokenData.data.open_id) {
+        cookies().set('tiktok_shop_open_id', tokenData.data.open_id, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          maxAge: 60 * 60 * 24 * 30 // 30 days
+        })
+      }
+
+      if (tokenData.data.seller_name) {
+        cookies().set('tiktok_shop_seller_name', tokenData.data.seller_name, {
           httpOnly: true,
           secure: process.env.NODE_ENV === 'production',
           sameSite: 'lax',

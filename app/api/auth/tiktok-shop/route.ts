@@ -4,7 +4,6 @@ export async function GET(request: NextRequest) {
   try {
     console.log('=== TikTok Shop Partner Authorization ===')
     
-    const SERVICE_ID = "7431862995146491691"
     const REDIRECT_URI = process.env.TIKTOK_REDIRECT_URI || "https://tktiktok.vercel.app/api/auth/tiktok-shop-callback"
     const APP_KEY = process.env.TIKTOK_CLIENT_KEY
 
@@ -16,20 +15,20 @@ export async function GET(request: NextRequest) {
     // Generate state for security
     const state = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
     
-    // TikTok Shop authorization URL - using the services.tiktokshops.us domain
-    const authUrl = `https://services.tiktokshops.us/open/authorize?` +
-      `service_id=${SERVICE_ID}&` +
-      `client_key=${APP_KEY}&` +
-      `redirect_uri=${encodeURIComponent(REDIRECT_URI)}&` +
-      `state=${state}`
+    // Log environment variables (excluding secrets)
+    console.log('Environment check:')
+    console.log('- APP_KEY present:', !!APP_KEY)
+    console.log('- REDIRECT_URI:', REDIRECT_URI)
     
-    console.log('TikTok Shop Auth URL:', authUrl)
-    console.log('Service ID:', SERVICE_ID)
-    console.log('Redirect URI:', REDIRECT_URI)
-    console.log('State:', state)
+    // TikTok Shop authorization URL
+    const authUrl = new URL('https://auth.tiktok-shops.com/oauth/authorize')
+    authUrl.searchParams.append('app_key', APP_KEY)
+    authUrl.searchParams.append('state', state)
+    authUrl.searchParams.append('redirect_uri', REDIRECT_URI)
     
-    // Redirect to TikTok Shop authorization
-    return NextResponse.redirect(authUrl)
+    console.log('Generated Auth URL:', authUrl.toString())
+    
+    return NextResponse.redirect(authUrl.toString())
     
   } catch (error) {
     console.error('❌ TikTok Shop Auth Error:', error)
