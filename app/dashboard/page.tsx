@@ -26,6 +26,7 @@ export default function Dashboard() {
   const [productId, setProductId] = useState('');
   const [product, setProduct] = useState<Product | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected'>('disconnected');
+  const [shops, setShops] = useState<any[]>([]);
 
   useEffect(() => {
     checkAuthStatus();
@@ -99,6 +100,27 @@ export default function Dashboard() {
     }
   };
 
+  const getAuthorizedShops = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      const response = await fetch('/api/get-authorized-shops');
+      const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to get authorized shops');
+      }
+      
+      setShops(data.shops);
+      
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -135,6 +157,31 @@ export default function Dashboard() {
             <p className="text-red-600">{error}</p>
           </div>
         )}
+
+        <div className="mb-8">
+          <button
+            onClick={getAuthorizedShops}
+            disabled={isLoading}
+            className="bg-blue-500 text-white px-4 py-2 rounded mr-2 hover:bg-blue-600 disabled:opacity-50"
+          >
+            {isLoading ? 'Loading...' : 'Get Authorized Shops'}
+          </button>
+          
+          {shops.length > 0 && (
+            <div className="mt-4">
+              <h2 className="text-xl font-semibold mb-2">Authorized Shops</h2>
+              <div className="bg-white rounded shadow p-4">
+                {shops.map((shop: any, index: number) => (
+                  <div key={shop.shop_id || index} className="mb-2 p-2 border-b">
+                    <p><strong>Shop Name:</strong> {shop.shop_name}</p>
+                    <p><strong>Shop ID:</strong> {shop.shop_id}</p>
+                    <p><strong>Region:</strong> {shop.region}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
 
         <div className="bg-white rounded-lg shadow p-6 mb-8">
           <h2 className="text-xl font-semibold mb-4">Product Management</h2>
