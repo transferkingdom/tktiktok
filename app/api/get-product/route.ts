@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     const shopAccessToken = cookieStore.get('tiktok_shop_access_token')?.value
     const legacyAccessToken = cookieStore.get('tiktok_access_token')?.value
     const accessToken = shopAccessToken || legacyAccessToken
-    const shopId = "7431862995146491691"
+    const shopId = cookieStore.get('tiktok_shop_id')?.value
     
     if (!accessToken) {
       return NextResponse.json(
@@ -26,55 +26,11 @@ export async function POST(request: NextRequest) {
     console.log('Using access token type:', tokenType)
     console.log('Using access token:', accessToken.substring(0, 10) + '...')
     
-    // TikTok Shop API endpoints - US region corrected URLs
+    // TikTok Shop API endpoints - Updated URLs
     const endpoints = [
       {
-        name: 'TikTok Shop US API - Product Details V202309',
-        url: `https://open-api.tiktokshop.com/product/202309/products/${productId}`,
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-          'x-tts-access-token': accessToken,
-          'shop-cipher': shopId
-        } as Record<string, string>,
-        params: new URLSearchParams({
-          'need_variant': 'true'
-        })
-      },
-      {
-        name: 'TikTok Shop US API - Product Search',
-        url: 'https://open-api.tiktokshop.com/product/202309/products/search',
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-          'x-tts-access-token': accessToken,
-          'shop-cipher': shopId
-        } as Record<string, string>,
-        body: JSON.stringify({
-          page_size: 20,
-          page_token: "",
-          product_id: productId
-        })
-      },
-      {
-        name: 'TikTok Shop US API - Alternative Product Get',
-        url: `https://open-api-sg.tiktokshop.com/product/202309/products/${productId}`,
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-          'x-tts-access-token': accessToken,
-          'shop-cipher': shopId
-        } as Record<string, string>,
-        params: new URLSearchParams({
-          'need_variant': 'true'
-        })
-      },
-      {
-        name: 'TikTok Shop Legacy API - Direct Product',
-        url: `https://open-api.tiktokshop.com/api/products/details/${productId}`,
+        name: 'TikTok Shop API - Product Details',
+        url: `https://api-us.tiktokshop.com/api/products/details/${productId}`,
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -82,6 +38,23 @@ export async function POST(request: NextRequest) {
           'x-tts-access-token': accessToken,
           'shop-id': shopId
         } as Record<string, string>
+      },
+      {
+        name: 'TikTok Shop API - Product Search',
+        url: 'https://api-us.tiktokshop.com/api/products/search',
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+          'x-tts-access-token': accessToken,
+          'shop-id': shopId
+        } as Record<string, string>,
+        body: JSON.stringify({
+          page_size: 20,
+          page_number: 1,
+          search_type: "product_id",
+          search_content: productId
+        })
       }
     ]
     
@@ -95,10 +68,6 @@ export async function POST(request: NextRequest) {
         console.log(`\n🔍 Testing: ${endpoint.name}`)
         
         let finalUrl = endpoint.url
-        if (endpoint.params) {
-          finalUrl += '?' + endpoint.params.toString()
-        }
-        
         console.log(`URL: ${finalUrl}`)
         
         const fetchOptions = {
@@ -131,7 +100,6 @@ export async function POST(request: NextRequest) {
         
         // Check if we got valid product data
         if (response.ok && result) {
-          // Check for various response formats
           if (result.data && result.data.products && Array.isArray(result.data.products) && result.data.products.length > 0) {
             productData = result.data.products[0]
             workingEndpoint = endpoint.name
@@ -141,16 +109,6 @@ export async function POST(request: NextRequest) {
             productData = result.data
             workingEndpoint = endpoint.name
             console.log('✅ Product found via data field!')
-            break
-          } else if (result.products && Array.isArray(result.products) && result.products.length > 0) {
-            productData = result.products[0]
-            workingEndpoint = endpoint.name
-            console.log('✅ Product found via products array!')
-            break
-          } else if (result.product) {
-            productData = result.product
-            workingEndpoint = endpoint.name
-            console.log('✅ Product found via product field!')
             break
           }
         }
@@ -172,8 +130,6 @@ export async function POST(request: NextRequest) {
     }
     
     if (!productData) {
-      // Return error instead of demo data
-      console.log('❌ No working API found')
       return NextResponse.json({
         success: false,
         error: 'Product not found in any API endpoint',
@@ -223,7 +179,7 @@ export async function POST(request: NextRequest) {
       success: true,
       working_endpoint: workingEndpoint,
       product: formattedProduct,
-      raw_data: productData, // For debugging
+      raw_data: productData,
       test_results: results
     })
     

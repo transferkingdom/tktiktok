@@ -25,9 +25,9 @@ export default function Dashboard() {
   const [error, setError] = useState<string | null>(null);
   const [productId, setProductId] = useState('');
   const [product, setProduct] = useState<Product | null>(null);
+  const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected'>('disconnected');
 
   useEffect(() => {
-    // Token kontrolü
     checkAuthStatus();
   }, []);
 
@@ -41,9 +41,10 @@ export default function Dashboard() {
         return;
       }
 
+      setConnectionStatus('connected');
       setIsLoading(false);
     } catch (error) {
-      setError('Yetkilendirme durumu kontrol edilemedi');
+      setError('Failed to check authorization status');
       setIsLoading(false);
     }
   };
@@ -53,13 +54,23 @@ export default function Dashboard() {
       await fetch('/api/auth/logout', { method: 'POST' });
       window.location.href = '/';
     } catch (error) {
-      setError('Çıkış yapılırken hata oluştu');
+      setError('Failed to logout');
+    }
+  };
+
+  const handleDisconnect = async () => {
+    try {
+      await fetch('/api/auth/disconnect', { method: 'POST' });
+      setConnectionStatus('disconnected');
+      setError('TikTok Shop disconnected successfully');
+    } catch (error) {
+      setError('Failed to disconnect from TikTok Shop');
     }
   };
 
   const handleGetProduct = async () => {
     if (!productId) {
-      setError('Lütfen bir ürün ID girin');
+      setError('Please enter a product ID');
       return;
     }
 
@@ -79,10 +90,10 @@ export default function Dashboard() {
         setProduct(data.product);
         setError(null);
       } else {
-        setError(data.error || 'Ürün getirilemedi');
+        setError(data.error || 'Failed to fetch product');
       }
     } catch (error) {
-      setError('Ürün getirme işlemi başarısız oldu');
+      setError('Failed to fetch product');
     } finally {
       setIsLoading(false);
     }
@@ -101,12 +112,22 @@ export default function Dashboard() {
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900">TikTok Shop Dashboard</h1>
-          <button
-            onClick={handleLogout}
-            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
-          >
-            Çıkış Yap
-          </button>
+          <div className="flex gap-4">
+            {connectionStatus === 'connected' && (
+              <button
+                onClick={handleDisconnect}
+                className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700"
+              >
+                Disconnect
+              </button>
+            )}
+            <button
+              onClick={handleLogout}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+            >
+              Logout
+            </button>
+          </div>
         </div>
 
         {error && (
@@ -116,13 +137,13 @@ export default function Dashboard() {
         )}
 
         <div className="bg-white rounded-lg shadow p-6 mb-8">
-          <h2 className="text-xl font-semibold mb-4">Ürün Yönetimi</h2>
+          <h2 className="text-xl font-semibold mb-4">Product Management</h2>
           <div className="flex gap-4 mb-6">
             <input
               type="text"
               value={productId}
               onChange={(e) => setProductId(e.target.value)}
-              placeholder="Ürün ID"
+              placeholder="Product ID"
               className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <button
@@ -130,7 +151,7 @@ export default function Dashboard() {
               disabled={isLoading}
               className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
             >
-              {isLoading ? 'Yükleniyor...' : 'Ürünü Getir'}
+              {isLoading ? 'Loading...' : 'Get Product'}
             </button>
           </div>
 
@@ -139,15 +160,15 @@ export default function Dashboard() {
               <h3 className="text-lg font-medium mb-2">{product.name}</h3>
               <p className="text-gray-600 mb-4">ID: {product.id}</p>
               
-              <h4 className="font-medium mb-2">Varyantlar:</h4>
+              <h4 className="font-medium mb-2">Variants:</h4>
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
                     <tr className="bg-gray-50">
                       <th className="px-4 py-2 text-left">SKU</th>
-                      <th className="px-4 py-2 text-left">Başlık</th>
-                      <th className="px-4 py-2 text-left">Fiyat</th>
-                      <th className="px-4 py-2 text-left">Stok</th>
+                      <th className="px-4 py-2 text-left">Title</th>
+                      <th className="px-4 py-2 text-left">Price</th>
+                      <th className="px-4 py-2 text-left">Stock</th>
                     </tr>
                   </thead>
                   <tbody>
