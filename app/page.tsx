@@ -7,25 +7,42 @@ interface PriceRule {
   price: string
 }
 
+interface ProductVariant {
+  id: string
+  seller_sku: string
+  title: string
+  price: {
+    original: string
+    sale: string
+  }
+  quantity: number
+  attributes: Array<{
+    attribute_name: string
+    value_name: string
+  }>
+}
+
 interface Product {
   id: string
-  title: string
-  variants: Array<{
-    id: string
-    title: string
-    price: string
-  }>
+  name: string
+  status: string
+  description: string
+  category: string
+  variants: ProductVariant[]
 }
 
 export default function Home() {
   const [isAuthorized, setIsAuthorized] = useState<boolean>(false)
   const [loading, setLoading] = useState<boolean>(false)
-  const [products, setProducts] = useState<Product[]>([])
   const [priceRules, setPriceRules] = useState<PriceRule[]>([])
-  const [testLoading, setTestLoading] = useState<boolean>(false)
-  const [directTestLoading, setDirectTestLoading] = useState<boolean>(false)
-  const [sdkTestLoading, setSdkTestLoading] = useState<boolean>(false)
   const [refreshTokenLoading, setRefreshTokenLoading] = useState<boolean>(false)
+  
+  // Product management states
+  const [productId, setProductId] = useState<string>('1730973647867908687')
+  const [product, setProduct] = useState<Product | null>(null)
+  const [productLoading, setProductLoading] = useState<boolean>(false)
+  const [editingVariants, setEditingVariants] = useState<Record<string, string>>({})
+  const [updatingPrices, setUpdatingPrices] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     // Check authorization status from server
@@ -96,154 +113,6 @@ export default function Home() {
     window.location.href = authUrl
   }
 
-  const handlePriceUpdate = async () => {
-    setLoading(true)
-    try {
-      console.log('🚀 Starting price update with rules:', priceRules)
-      
-      const response = await fetch('/api/update-prices', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ priceRules }),
-      })
-      
-      const result = await response.json()
-      
-      console.log('📊 Price update response:', result)
-      
-      if (response.ok) {
-        console.log('✅ Update successful!')
-        console.log('📋 Debug info:', result.debug_info)
-        console.log('🎯 Updates:', result.updates)
-        console.log('📈 Summary:', result.summary)
-        
-        alert(`Prices updated successfully! Updated ${result.updated_count} variants.\n\nCheck console for detailed logs.`)
-      } else {
-        console.error('❌ Update failed:', result)
-        alert(`Failed to update prices: ${result.error}`)
-      }
-    } catch (error) {
-      console.error('💥 Error updating prices:', error)
-      alert('Error updating prices')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleTestProduct = async () => {
-    setTestLoading(true)
-    try {
-      console.log('🧪 Testing product API for ID: 1731182926124651087')
-      
-      const response = await fetch('/api/test-product', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ productId: '1731182926124651087' }),
-      })
-      
-      const result = await response.json()
-      
-      console.log('🧪 Test product response:', result)
-      
-      if (response.ok) {
-        console.log('✅ Product API test successful!')
-        console.log('📦 Product details:', result.product)
-        console.log('🏷️ Variants:', result.variants)
-        
-        alert(`Product API test successful!\n\nProduct: ${result.product?.name || 'N/A'}\nVariants: ${result.variants?.length || 0}\n\nCheck console for full details.`)
-      } else {
-        console.error('❌ Product API test failed:', result)
-        alert(`Product API test failed: ${result.error}`)
-      }
-    } catch (error) {
-      console.error('💥 Error testing product API:', error)
-      alert('Error testing product API')
-    } finally {
-      setTestLoading(false)
-    }
-  }
-
-  const handleTestDirectToken = async () => {
-    setDirectTestLoading(true)
-    try {
-      console.log('🔑 Testing with direct access token')
-      
-      const response = await fetch('/api/test-direct-token', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ productId: '1731182926124651087' }),
-      })
-      
-      const result = await response.json()
-      
-      console.log('🔑 Direct token test response:', result)
-      
-      if (response.ok) {
-        console.log('✅ Direct token test completed!')
-        console.log('📊 Summary:', result.summary)
-        console.log('🔗 Working endpoints:', result.summary.working_endpoints)
-        console.log('📋 All results:', result.results)
-        
-        const summary = result.summary
-        alert(`Direct Token Test Results:\n\nTotal tests: ${summary.total_tests}\nSuccessful: ${summary.successful_calls}\nFailed: ${summary.failed_calls}\n\nWorking endpoints: ${summary.working_endpoints.length}\n\nCheck console for detailed logs.`)
-      } else {
-        console.error('❌ Direct token test failed:', result)
-        alert(`Direct token test failed: ${result.error}`)
-      }
-    } catch (error) {
-      console.error('💥 Error testing direct token:', error)
-      alert('Error testing direct token')
-    } finally {
-      setDirectTestLoading(false)
-    }
-  }
-
-  const handleTestSDK = async () => {
-    setSdkTestLoading(true)
-    try {
-      console.log('🔧 Testing with official TikTok SDK')
-      
-      const response = await fetch('/api/test-sdk', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ productId: '1731182926124651087' }),
-      })
-      
-      const result = await response.json()
-      
-      console.log('🔧 SDK test response:', result)
-      
-      if (response.ok && result.success) {
-        console.log('✅ SDK test successful!')
-        console.log('📦 API Response:', result.response)
-        if (result.response && result.response.data) {
-          console.log('📋 Data:', result.response.data)
-        }
-        
-        alert(`SDK Test Successful!\n\nStatus: ${result.response?.status || 'N/A'}\nMessage: ${result.message}\n\nCheck console for full API response data.`)
-      } else {
-        console.error('❌ SDK test failed:', result)
-        
-        // Handle both error formats
-        const errorMsg = result.error?.message || result.error || result.message || 'Unknown error'
-        alert(`SDK test failed: ${errorMsg}`)
-      }
-    } catch (error) {
-      console.error('💥 Error testing SDK:', error)
-      alert('Error testing SDK')
-    } finally {
-      setSdkTestLoading(false)
-    }
-  }
-
   const handleRefreshToken = async () => {
     setRefreshTokenLoading(true)
     try {
@@ -264,7 +133,7 @@ export default function Home() {
         console.log('✅ Token refresh successful!')
         console.log('📦 New token info:', result.data)
         
-        alert(`Token Refresh Successful!\n\nNew access token generated\nExpires: ${new Date(result.data.access_token_expire_in * 1000).toLocaleString()}\n\nYou can now test APIs again!`)
+        alert(`Token Refresh Successful!\n\nNew access token generated\nExpires: ${new Date(result.data.access_token_expire_in * 1000).toLocaleString()}\n\nYou can now fetch products!`)
       } else {
         console.error('❌ Token refresh failed:', result)
         alert(`Token refresh failed: ${result.error || 'Unknown error'}\n\nCheck console for details.`)
@@ -274,6 +143,119 @@ export default function Home() {
       alert('Error refreshing token')
     } finally {
       setRefreshTokenLoading(false)
+    }
+  }
+
+  const handleGetProduct = async () => {
+    if (!productId.trim()) {
+      alert('Please enter a product ID')
+      return
+    }
+
+    setProductLoading(true)
+    setProduct(null)
+    
+    try {
+      console.log('📦 Fetching product:', productId)
+      
+      const response = await fetch('/api/get-product', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ productId: productId.trim() }),
+      })
+      
+      const result = await response.json()
+      
+      console.log('📦 Get product response:', result)
+      
+      if (response.ok && result.success) {
+        console.log('✅ Product fetched successfully!')
+        console.log('📋 Product details:', result.product)
+        
+        setProduct(result.product)
+        
+        // Initialize editing prices with current prices
+        const initialPrices: Record<string, string> = {}
+        result.product.variants.forEach((variant: ProductVariant) => {
+          initialPrices[variant.id] = variant.price.original
+        })
+        setEditingVariants(initialPrices)
+        
+      } else {
+        console.error('❌ Get product failed:', result)
+        alert(`Failed to get product: ${result.error}`)
+      }
+    } catch (error) {
+      console.error('💥 Error fetching product:', error)
+      alert('Error fetching product')
+    } finally {
+      setProductLoading(false)
+    }
+  }
+
+  const handlePriceChange = (variantId: string, newPrice: string) => {
+    setEditingVariants(prev => ({
+      ...prev,
+      [variantId]: newPrice
+    }))
+  }
+
+  const handleUpdatePrice = async (variant: ProductVariant) => {
+    const newPrice = editingVariants[variant.id]
+    
+    if (!newPrice || newPrice === variant.price.original) {
+      return
+    }
+
+    setUpdatingPrices(prev => ({ ...prev, [variant.id]: true }))
+    
+    try {
+      console.log('💰 Updating price for variant:', variant.seller_sku)
+      
+      const response = await fetch('/api/update-product-price', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          productId: product?.id,
+          variantId: variant.id, 
+          newPrice: newPrice 
+        }),
+      })
+      
+      const result = await response.json()
+      
+      console.log('💰 Update price response:', result)
+      
+      if (response.ok && result.success) {
+        console.log('✅ Price updated successfully!')
+        
+        // Update the product data with new price
+        if (product) {
+          const updatedProduct = {
+            ...product,
+            variants: product.variants.map(v => 
+              v.id === variant.id 
+                ? { ...v, price: { original: newPrice, sale: newPrice } }
+                : v
+            )
+          }
+          setProduct(updatedProduct)
+        }
+        
+        alert(`Price updated successfully!\n\nVariant: ${variant.seller_sku}\nNew Price: $${newPrice}`)
+      } else {
+        console.error('❌ Price update failed:', result)
+        alert(`Failed to update price: ${result.error}`)
+      }
+    } catch (error) {
+      console.error('💥 Error updating price:', error)
+      alert('Error updating price')
+    } finally {
+      setUpdatingPrices(prev => ({ ...prev, [variant.id]: false }))
     }
   }
 
@@ -292,101 +274,172 @@ export default function Home() {
     setPriceRules(newRules)
   }
 
-  const handleSingleProductTest = async (productId: string, variant: string, sku: string) => {
-    setTestLoading(true)
-    try {
-      console.log('🧪 Testing single product price update')
-      
-      const response = await fetch('/api/test-single-product', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ productId, variant, sku }),
-      })
-      
-      const result = await response.json()
-      
-      console.log('🧪 Single product test response:', result)
-      
-      if (response.ok) {
-        console.log('✅ Single product test successful!')
-        console.log('📦 Product details:', result.product)
-        console.log('🏷️ Variants:', result.variants)
-        
-        alert(`Single Product Test Successful!\n\nProduct: ${result.product?.name || 'N/A'}\nVariants: ${result.variants?.length || 0}\n\nCheck console for full details.`)
-      } else {
-        console.error('❌ Single product test failed:', result)
-        alert(`Single product test failed: ${result.error}`)
-      }
-    } catch (error) {
-      console.error('💥 Error testing single product:', error)
-      alert('Error testing single product')
-    } finally {
-      setTestLoading(false)
-    }
-  }
-
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-6xl mx-auto">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
             TikTok Shop Price Updater
           </h1>
           <p className="text-gray-600">
-            Update product prices based on variant titles automatically
+            Gerçek ürün bilgilerini çekip fiyatları güncelleyin
           </p>
         </div>
 
         {!isAuthorized ? (
           <div className="card text-center">
             <h2 className="text-xl font-semibold mb-4">
-              Authorize TikTok Shop Access
+              TikTok Shop Yetkilendirmesi
             </h2>
             <p className="text-gray-600 mb-6">
-              Connect your TikTok Shop account to manage product pricing
+              TikTok Shop hesabınızı bağlayarak ürün fiyatlarını yönetin
             </p>
             <button
               onClick={handleAuthorize}
               className="btn-primary text-lg px-8 py-3"
             >
-              Connect TikTok Shop
+              TikTok Shop'a Bağlan
             </button>
           </div>
         ) : (
           <div className="space-y-6">
-            {/* Single Product Test */}
+            {/* Token Management */}
             <div className="card">
-              <h2 className="text-xl font-semibold mb-4">Single Product Price Update Test</h2>
-              <div className="bg-gray-50 p-4 rounded-lg mb-4">
-                <h3 className="font-semibold mb-2">Target Product:</h3>
-                <p><strong>Product ID:</strong> 1730973647867908687</p>
-                <p><strong>Variant:</strong> Unisex - S &amp; M ( 10" )</p>
-                <p><strong>SKU:</strong> USA258</p>
-              </div>
-              <div className="space-y-3">
+              <h2 className="text-xl font-semibold mb-4">Token Yönetimi</h2>
+              <button
+                onClick={handleRefreshToken}
+                disabled={refreshTokenLoading}
+                className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed bg-blue-600 hover:bg-blue-700"
+              >
+                {refreshTokenLoading ? 'Token Yenileniyor...' : '🔄 Access Token Yenile'}
+              </button>
+            </div>
+
+            {/* Product Fetch */}
+            <div className="card">
+              <h2 className="text-xl font-semibold mb-4">Ürün Bilgilerini Getir</h2>
+              <div className="flex gap-4 items-end">
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Product ID
+                  </label>
+                  <input
+                    type="text"
+                    value={productId}
+                    onChange={(e) => setProductId(e.target.value)}
+                    placeholder="Ürün ID'sini girin"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
                 <button
-                  onClick={handleRefreshToken}
-                  disabled={refreshTokenLoading}
-                  className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed w-full bg-blue-600 hover:bg-blue-700"
+                  onClick={handleGetProduct}
+                  disabled={productLoading}
+                  className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed bg-green-600 hover:bg-green-700 px-6 py-2"
                 >
-                  {refreshTokenLoading ? 'Refreshing Token...' : '🔄 Refresh Access Token'}
-                </button>
-                <button
-                  onClick={() => handleSingleProductTest('1730973647867908687', 'Unisex - S & M ( 10" )', 'USA258')}
-                  disabled={testLoading}
-                  className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed w-full bg-green-600 hover:bg-green-700"
-                >
-                  {testLoading ? 'Testing Product...' : '🎯 Test Single Product Price Update'}
+                  {productLoading ? 'Getiriliyor...' : '📦 Ürünü Getir'}
                 </button>
               </div>
             </div>
 
+            {/* Product Details & Price Editing */}
+            {product && (
+              <div className="card">
+                <h2 className="text-xl font-semibold mb-4">Ürün Detayları ve Fiyat Düzenleme</h2>
+                
+                {/* Product Info */}
+                <div className="bg-gray-50 p-4 rounded-lg mb-6">
+                  <h3 className="font-semibold text-lg mb-2">{product.name}</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                    <div>
+                      <span className="font-medium">ID:</span> {product.id}
+                    </div>
+                    <div>
+                      <span className="font-medium">Status:</span> {product.status}
+                    </div>
+                    <div>
+                      <span className="font-medium">Category:</span> {product.category || 'N/A'}
+                    </div>
+                    <div>
+                      <span className="font-medium">Variants:</span> {product.variants.length}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Variants Table - Similar to TikTok Shop */}
+                <div className="overflow-x-auto">
+                  <table className="min-w-full bg-white border border-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Variant
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          SKU
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Mevcut Fiyat
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Yeni Fiyat
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Stok
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          İşlem
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {product.variants.map((variant) => (
+                        <tr key={variant.id} className="hover:bg-gray-50">
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {variant.title}
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600">
+                            {variant.seller_sku}
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                            ${variant.price.original}
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap">
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={editingVariants[variant.id] || variant.price.original}
+                              onChange={(e) => handlePriceChange(variant.id, e.target.value)}
+                              className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            />
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600">
+                            {variant.quantity}
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap">
+                            <button
+                              onClick={() => handleUpdatePrice(variant)}
+                              disabled={
+                                updatingPrices[variant.id] || 
+                                !editingVariants[variant.id] ||
+                                editingVariants[variant.id] === variant.price.original
+                              }
+                              className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {updatingPrices[variant.id] ? 'Güncelleniyor...' : 'Güncelle'}
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Legacy Price Rules - Keep for batch updates */}
             <div className="card">
-              <h2 className="text-xl font-semibold mb-4">Price Rules</h2>
+              <h2 className="text-xl font-semibold mb-4">Toplu Fiyat Kuralları</h2>
               <p className="text-gray-600 mb-4">
-                Set pricing rules based on variant titles
+                Variant başlıklarına göre fiyat kuralları belirleyin
               </p>
               
               <div className="space-y-4">
@@ -394,7 +447,7 @@ export default function Home() {
                   <div key={index} className="flex gap-4 items-center">
                     <input
                       type="text"
-                      placeholder="Variant title (e.g., 'Small', 'Large')"
+                      placeholder="Variant başlığı (örn: 'Small', 'Large')"
                       value={rule.variant}
                       onChange={(e) => updatePriceRule(index, 'variant', e.target.value)}
                       className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -402,7 +455,7 @@ export default function Home() {
                     <input
                       type="number"
                       step="0.01"
-                      placeholder="Price"
+                      placeholder="Fiyat"
                       value={rule.price}
                       onChange={(e) => updatePriceRule(index, 'price', e.target.value)}
                       className="w-32 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -411,7 +464,7 @@ export default function Home() {
                       onClick={() => removePriceRule(index)}
                       className="text-red-600 hover:text-red-800 px-2"
                     >
-                      Remove
+                      Kaldır
                     </button>
                   </div>
                 ))}
@@ -420,23 +473,9 @@ export default function Home() {
                   onClick={addPriceRule}
                   className="btn-secondary"
                 >
-                  Add Price Rule
+                  Fiyat Kuralı Ekle
                 </button>
               </div>
-            </div>
-
-            <div className="card">
-              <h2 className="text-xl font-semibold mb-4">Update Prices</h2>
-              <p className="text-gray-600 mb-4">
-                Apply the price rules to all matching products
-              </p>
-              <button
-                onClick={handlePriceUpdate}
-                disabled={loading || priceRules.length === 0}
-                className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? 'Updating...' : 'Update Prices'}
-              </button>
             </div>
           </div>
         )}
