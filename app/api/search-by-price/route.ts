@@ -86,66 +86,91 @@ export async function POST(request: NextRequest) {
 
     // Get products with pagination
     const productsPath = '/product/202309/products/search'
-    const productsParams = {
-      app_key: APP_KEY,
-      timestamp: Math.floor(Date.now() / 1000).toString(),
-      shop_cipher: shopCipher,
-      page_size: '100',  // Increase page size to get more products
-      page_number: page.toString()
-    }
-
-    const productsBody = {
-      status: 'ACTIVATE'  // Only get active products
-    }
-    
-    const productsSign = generateSignature(productsPath, productsParams, productsBody, APP_SECRET)
-    const productsQueryParams = new URLSearchParams({
-      ...productsParams,
-      sign: productsSign,
-      access_token: accessToken
-    })
-    
-    const productsResponse = await fetch(`${baseUrl}${productsPath}?${productsQueryParams.toString()}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-TTS-Access-Token': accessToken
-      },
-      body: JSON.stringify(productsBody)
-    })
-    
-    const productsData = await productsResponse.json()
-    console.log('Products Response:', JSON.stringify(productsData, null, 2))
-
-    if (!productsData.data?.products) {
-      return NextResponse.json({
-        success: false,
-        error: 'Failed to get products',
-        details: productsData
-      }, { status: productsResponse.status })
-    }
-
-    // Filter products by price
     const matchingSkus = []
+    let hasMorePages = true
+    let nextPageToken: string | null = null
     
-    for (const product of productsData.data.products) {
-      for (const sku of product.skus) {
-        const skuPrice = Number(sku.price.tax_exclusive_price).toFixed(2)
-        const searchPriceFormatted = Number(searchPrice).toFixed(2)
-        
-        if (skuPrice === searchPriceFormatted) {
-          matchingSkus.push({
-            product_id: product.id,
-            sku_id: sku.id,
-            seller_sku: sku.seller_sku,
-            title: product.title,
-            price: skuPrice
-          })
+    while (hasMorePages) {
+      const productsParams: Record<string, string> = {
+        app_key: APP_KEY,
+        timestamp: Math.floor(Date.now() / 1000).toString(),
+        shop_cipher: shopCipher,
+        page_size: '100',  // Maximum allowed by TikTok API
+        ...(nextPageToken ? { page_token: nextPageToken } : {})
+      }
+
+      const productsBody = {
+        status: 'ACTIVATE'  // Only get active products
+      }
+      
+      const productsSign = generateSignature(productsPath, productsParams, productsBody, APP_SECRET)
+      const productsQueryParams = new URLSearchParams({
+        ...productsParams,
+        sign: productsSign,
+        access_token: accessToken
+      })
+      
+      const productsResponse = await fetch(`${baseUrl}${productsPath}?${productsQueryParams.toString()}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-TTS-Access-Token': accessToken
+        },
+        body: JSON.stringify(productsBody)
+      })
+      
+      const productsData: {
+        code: number,
+        data: {
+          products: Array<{
+            id: string,
+            title: string,
+            skus: Array<{
+              id: string,
+              seller_sku: string,
+              price: {
+                tax_exclusive_price: string
+              }
+            }>
+          }>,
+          next_page_token?: string
+        },
+        message: string
+      } = await productsResponse.json()
+      
+      if (!productsResponse.ok || productsData.code !== 0) {
+        throw new Error(productsData.message || 'Failed to get products')
+      }
+
+      // Process products from current page
+      for (const product of productsData.data.products) {
+        for (const sku of product.skus) {
+          const skuPrice = Number(sku.price.tax_exclusive_price).toFixed(2)
+          const searchPriceFormatted = Number(searchPrice).toFixed(2)
+          
+          if (skuPrice === searchPriceFormatted) {
+            matchingSkus.push({
+              product_id: product.id,
+              sku_id: sku.id,
+              seller_sku: sku.seller_sku,
+              title: product.title,
+              price: skuPrice
+            })
+          }
         }
+      }
+
+      // Check if there are more pages
+      nextPageToken = productsData.data.next_page_token || null
+      hasMorePages = !!nextPageToken
+
+      // Add delay between requests to avoid rate limits
+      if (hasMorePages) {
+        await new Promise(resolve => setTimeout(resolve, 500))
       }
     }
 
-    // Add pagination info
+    // Add pagination info for frontend
     const totalPages = Math.ceil(matchingSkus.length / pageSize)
     const start = (page - 1) * pageSize
     const end = start + pageSize
@@ -157,7 +182,7 @@ export async function POST(request: NextRequest) {
       total: matchingSkus.length,
       page: page,
       pageSize: pageSize,
-      totalPages: totalPages
+      totalPages
     })
     
   } catch (error) {
