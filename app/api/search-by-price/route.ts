@@ -93,12 +93,12 @@ export async function POST(request: NextRequest) {
       app_key: APP_KEY,
       timestamp: Math.floor(Date.now() / 1000).toString(),
       shop_cipher: shopCipher,
-      page_size: pageSize.toString(),
+      page_size: '100',  // Increase page size to get more products
       page_number: page.toString()
     }
 
     const productsBody = {
-      // Empty body for now, we'll add filters if needed
+      status: 'ACTIVATE'  // Only get active products
     }
     
     const productsSign = generateSignature(productsPath, productsParams, productsBody, APP_SECRET)
@@ -120,37 +120,53 @@ export async function POST(request: NextRequest) {
     const productsData = await productsResponse.json()
     console.log('Products Response:', JSON.stringify(productsData, null, 2))
 
+    if (!productsData.data?.products) {
+      return NextResponse.json({
+        success: false,
+        error: 'Failed to get products',
+        details: productsData
+      }, { status: productsResponse.status })
+    }
+
     // Filter products by price
     const matchingSkus = []
+    let totalMatchingSkus = 0
     
-    for (const product of productsData.data?.products || []) {
+    for (const product of productsData.data.products) {
       if (product.skus) {
         for (const sku of product.skus) {
           // Convert SKU price to string with 2 decimal places for consistent comparison
           const skuPrice = Number(sku.price?.tax_exclusive_price).toFixed(2)
           
           if (skuPrice === normalizedSearchPrice) {
-            matchingSkus.push({
-              product_id: product.id,
-              product_name: product.title,
-              sku_id: sku.id,
-              seller_sku: sku.seller_sku,
-              price: sku.price.tax_exclusive_price
-            })
+            totalMatchingSkus++
+            
+            // Only add SKUs for the current page
+            const startIndex = (page - 1) * pageSize
+            const endIndex = startIndex + pageSize
+            
+            if (totalMatchingSkus > startIndex && totalMatchingSkus <= endIndex) {
+              matchingSkus.push({
+                product_id: product.id,
+                product_name: product.title,
+                sku_id: sku.id,
+                seller_sku: sku.seller_sku,
+                price: sku.price.tax_exclusive_price
+              })
+            }
           }
         }
       }
     }
 
-    console.log(`Found ${matchingSkus.length} matching SKUs for price ${normalizedSearchPrice}`)
-
+    console.log(`Found ${totalMatchingSkus} matching SKUs for price ${normalizedSearchPrice}`)
+    
     return NextResponse.json({
       success: true,
       skus: matchingSkus,
-      total: matchingSkus.length,
+      total: totalMatchingSkus,
       page: page,
-      pageSize: pageSize,
-      totalPages: Math.ceil(matchingSkus.length / pageSize)
+      pageSize: pageSize
     })
     
   } catch (error) {
