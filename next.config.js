@@ -5,6 +5,9 @@ const nextConfig = {
     TIKTOK_CLIENT_SECRET: process.env.TIKTOK_CLIENT_SECRET,
     TIKTOK_REDIRECT_URI: process.env.TIKTOK_REDIRECT_URI,
   },
+  experimental: {
+    serverActions: true
+  }
 }
 
 module.exports = nextConfig 
