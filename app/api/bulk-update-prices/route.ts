@@ -69,11 +69,13 @@ async function getProductList(accessToken: string, shopCipher: string) {
     app_key: APP_KEY,
     timestamp: Math.floor(Date.now() / 1000).toString(),
     shop_cipher: shopCipher,
-    page_size: '100', // Get maximum products per request
+    page_size: '100',
     page_number: '1'
   }
   
-  const productsSign = generateSignature(productsPath, productsParams, null, APP_SECRET)
+  const productsBody = {}
+  
+  const productsSign = generateSignature(productsPath, productsParams, productsBody, APP_SECRET)
   const productsQueryParams = new URLSearchParams({
     ...productsParams,
     sign: productsSign,
@@ -81,11 +83,12 @@ async function getProductList(accessToken: string, shopCipher: string) {
   })
   
   const productsResponse = await fetch(`${baseUrl}${productsPath}?${productsQueryParams.toString()}`, {
-    method: 'GET',
+    method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'X-TTS-Access-Token': accessToken
-    }
+    },
+    body: JSON.stringify(productsBody)
   })
   
   const productsData = await productsResponse.json()

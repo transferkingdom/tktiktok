@@ -18,8 +18,11 @@ export default function BulkPriceEdit() {
   const [error, setError] = useState('')
   const [skus, setSkus] = useState<Sku[]>([])
   const [selectedSkus, setSelectedSkus] = useState<Set<string>>(new Set())
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const itemsPerPage = 40
 
-  const handleSearch = async (e: React.FormEvent) => {
+  const handleSearch = async (e: React.FormEvent, page = 1) => {
     e.preventDefault()
     
     if (!searchPrice) {
@@ -31,7 +34,6 @@ export default function BulkPriceEdit() {
     setLoading(true)
 
     try {
-      // Format the search price to 2 decimal places
       const formattedPrice = Number(searchPrice).toFixed(2)
       
       const response = await fetch('/api/search-by-price', {
@@ -39,7 +41,11 @@ export default function BulkPriceEdit() {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ searchPrice: formattedPrice })
+        body: JSON.stringify({ 
+          searchPrice: formattedPrice,
+          page: page,
+          pageSize: itemsPerPage
+        })
       })
 
       const data = await response.json()
@@ -53,6 +59,8 @@ export default function BulkPriceEdit() {
       }
 
       setSkus(data.skus)
+      setCurrentPage(page)
+      setTotalPages(Math.ceil(data.total / itemsPerPage))
       setSelectedSkus(new Set())
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unexpected error occurred')
@@ -205,6 +213,41 @@ export default function BulkPriceEdit() {
             ))}
           </tbody>
         </table>
+
+        {totalPages > 1 && (
+          <div className={styles.pagination}>
+            {currentPage > 1 && (
+              <button
+                onClick={(e) => handleSearch(e, currentPage - 1)}
+                className={styles.pageButton}
+                disabled={loading}
+              >
+                Previous
+              </button>
+            )}
+            
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+              <button
+                key={page}
+                onClick={(e) => handleSearch(e, page)}
+                className={`${styles.pageButton} ${page === currentPage ? styles.activePage : ''}`}
+                disabled={loading}
+              >
+                {page}
+              </button>
+            ))}
+
+            {currentPage < totalPages && (
+              <button
+                onClick={(e) => handleSearch(e, currentPage + 1)}
+                className={styles.pageButton}
+                disabled={loading}
+              >
+                Next
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )

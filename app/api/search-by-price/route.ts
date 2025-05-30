@@ -29,7 +29,7 @@ function generateSignature(path: string, params: Record<string, string>, body: a
 
 export async function POST(request: NextRequest) {
   try {
-    const { searchPrice } = await request.json()
+    const { searchPrice, page = 1, pageSize = 40 } = await request.json()
     
     if (!searchPrice) {
       return NextResponse.json(
@@ -93,7 +93,8 @@ export async function POST(request: NextRequest) {
       app_key: APP_KEY,
       timestamp: Math.floor(Date.now() / 1000).toString(),
       shop_cipher: shopCipher,
-      page_size: '40'
+      page_size: pageSize.toString(),
+      page_number: page.toString()
     }
 
     const productsBody = {
@@ -146,7 +147,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       skus: matchingSkus,
-      total: matchingSkus.length
+      total: matchingSkus.length,
+      page: page,
+      pageSize: pageSize,
+      totalPages: Math.ceil(matchingSkus.length / pageSize)
     })
     
   } catch (error) {
