@@ -155,7 +155,12 @@ export async function POST(request: NextRequest) {
         id: skuId,
         price: {
           amount: listPrice.toString(),
-          currency: "TRY"
+          currency: "USD",
+          sale_price: listPrice.toString()
+        },
+        list_price: {
+          amount: listPrice.toString(),
+          currency: "USD"
         }
       }]
     }
