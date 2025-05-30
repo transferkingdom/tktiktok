@@ -172,6 +172,7 @@ export async function POST(request: NextRequest) {
           }
         } catch (error) {
           console.error('Failed to get product details:', error)
+          productTitle = `Product ${product.id}`
         }
       }
       
@@ -185,7 +186,7 @@ export async function POST(request: NextRequest) {
           matchingSkus.push({
             product_id: product.id,
             sku_id: sku.id,
-            seller_sku: sku.seller_sku,
+            seller_sku: sku.seller_sku || '',
             title: productTitle || `Product ${product.id}`,
             price: skuPrice
           })
@@ -198,17 +199,20 @@ export async function POST(request: NextRequest) {
       await new Promise(resolve => setTimeout(resolve, 1000))
     }
 
-    return NextResponse.json({
+    const response = {
       success: true,
       skus: matchingSkus,
-      total: productsData.data.total,
+      total: productsData.data.total_count || 0,
       hasNextPage: !!productsData.data.next_page_token,
-      nextPageToken: productsData.data.next_page_token
-    })
+      nextPageToken: productsData.data.next_page_token || null
+    }
+
+    console.log('Sending response:', JSON.stringify(response, null, 2))
+    return NextResponse.json(response)
     
   } catch (error) {
     console.error('❌ Search Products Error:', error)
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-    return NextResponse.json({ error: errorMessage }, { status: 500 })
+    return NextResponse.json({ error: errorMessage, success: false, skus: [] }, { status: 500 })
   }
 } 

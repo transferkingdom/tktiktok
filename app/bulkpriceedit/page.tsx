@@ -56,16 +56,26 @@ export default function BulkPriceEdit() {
         throw new Error(data.error || 'An error occurred during search')
       }
 
+      // Check if data.skus exists and is an array
+      if (!Array.isArray(data.skus)) {
+        throw new Error('Invalid response format from API')
+      }
+
       if (!isLoadMore) {
-        setSkus(data.skus)
+        setSkus(data.skus || [])
         setSelectedSkus(new Set()) // Clear selections on new search
       } else {
-        setSkus(prev => [...prev, ...data.skus])
+        setSkus(prev => [...prev, ...(data.skus || [])])
       }
       
-      setTotalCount(data.total)
-      setHasNextPage(data.hasNextPage)
-      setNextPageToken(data.nextPageToken)
+      setTotalCount(data.total || 0)
+      setHasNextPage(!!data.hasNextPage)
+      setNextPageToken(data.nextPageToken || null)
+
+      // If no results found, show a message
+      if (data.skus.length === 0) {
+        setError(`No products found with price $${formattedPrice}`)
+      }
     } catch (error) {
       console.error('Search error:', error)
       setError(error instanceof Error ? error.message : 'Failed to search')
