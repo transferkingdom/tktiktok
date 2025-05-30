@@ -107,14 +107,14 @@ export default function ProductTable({ products, totalCount, nextPageToken, onUp
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <h2>Ürünler ({totalCount})</h2>
+        <h2>Products ({totalCount})</h2>
         <div className={styles.actions}>
           <input
             type="number"
             step="0.01"
             value={newPrice}
             onChange={(e) => setNewPrice(e.target.value)}
-            placeholder="Yeni fiyat"
+            placeholder="New price"
             className={styles.priceInput}
           />
           <button 
@@ -122,7 +122,7 @@ export default function ProductTable({ products, totalCount, nextPageToken, onUp
             disabled={!newPrice || selectedVariants.size === 0}
             className={styles.updateButton}
           >
-            Fiyatları Güncelle ({selectedVariants.size})
+            Update Prices ({selectedVariants.size})
           </button>
         </div>
       </div>
@@ -138,13 +138,13 @@ export default function ProductTable({ products, totalCount, nextPageToken, onUp
                   onChange={handleSelectAll}
                 />
               </th>
-              <th>Ürün Adı</th>
-              <th>Durum</th>
-              <th>Son Güncelleme</th>
+              <th>Product Name</th>
+              <th>Status</th>
+              <th>Last Update</th>
               <th>SKU</th>
-              <th>Özellikler</th>
-              <th>Fiyat</th>
-              <th>Stok</th>
+              <th>Attributes</th>
+              <th>Price</th>
+              <th>Stock</th>
             </tr>
           </thead>
           <tbody>
@@ -187,7 +187,7 @@ export default function ProductTable({ products, totalCount, nextPageToken, onUp
       {nextPageToken && (
         <div className={styles.loadMore}>
           <button onClick={() => onLoadMore(nextPageToken)}>
-            Daha Fazla Yükle
+            Load More
           </button>
         </div>
       )}

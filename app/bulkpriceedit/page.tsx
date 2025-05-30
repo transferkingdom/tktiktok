@@ -5,8 +5,9 @@ import ProductTable from '../components/ProductTable'
 import styles from './page.module.css'
 
 interface SearchParams {
-  attributeName?: string;
-  attributeValue?: string;
+  searchType: 'price' | 'sku';
+  price?: string;
+  sku?: string;
 }
 
 export default function BulkPriceEdit() {
@@ -16,8 +17,9 @@ export default function BulkPriceEdit() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [searchParams, setSearchParams] = useState<SearchParams>({
-    attributeName: 'Size',
-    attributeValue: ''
+    searchType: 'price',
+    price: '',
+    sku: ''
   })
 
   const fetchProducts = async (pageToken?: string) => {
@@ -27,9 +29,11 @@ export default function BulkPriceEdit() {
       if (pageToken) {
         params.append('page_token', pageToken)
       }
-      if (searchParams.attributeName && searchParams.attributeValue) {
-        params.append('attribute_name', searchParams.attributeName)
-        params.append('attribute_value', searchParams.attributeValue)
+      
+      if (searchParams.searchType === 'price' && searchParams.price) {
+        params.append('price', searchParams.price)
+      } else if (searchParams.searchType === 'sku' && searchParams.sku) {
+        params.append('sku', searchParams.sku)
       }
 
       const response = await fetch(`/api/get-products?${params.toString()}`)
@@ -87,42 +91,63 @@ export default function BulkPriceEdit() {
 
   return (
     <div className={styles.container}>
-      <h1 className={styles.title}>Toplu Fiyat Güncelleme</h1>
+      <h1 className={styles.title}>Bulk Price Update</h1>
       
       <form onSubmit={handleSearch} className={styles.searchForm}>
         <div className={styles.formGroup}>
           <label className={styles.label}>
-            Özellik
+            Search Type
           </label>
           <select 
-            value={searchParams.attributeName}
-            onChange={(e) => setSearchParams(prev => ({ ...prev, attributeName: e.target.value }))}
+            value={searchParams.searchType}
+            onChange={(e) => setSearchParams(prev => ({ 
+              ...prev, 
+              searchType: e.target.value as 'price' | 'sku',
+              price: '',
+              sku: ''
+            }))}
             className={styles.select}
           >
-            <option value="Size">Size</option>
-            <option value="Style">Style</option>
+            <option value="price">Price</option>
+            <option value="sku">SKU</option>
           </select>
         </div>
         
-        <div className={styles.formGroup}>
-          <label className={styles.label}>
-            Değer
-          </label>
-          <input
-            type="text"
-            value={searchParams.attributeValue}
-            onChange={(e) => setSearchParams(prev => ({ ...prev, attributeValue: e.target.value }))}
-            placeholder='Örn: Unisex - S & M ( 10" )'
-            className={styles.input}
-          />
-        </div>
+        {searchParams.searchType === 'price' ? (
+          <div className={styles.formGroup}>
+            <label className={styles.label}>
+              Price
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              value={searchParams.price}
+              onChange={(e) => setSearchParams(prev => ({ ...prev, price: e.target.value }))}
+              placeholder="e.g. 4.25"
+              className={styles.input}
+            />
+          </div>
+        ) : (
+          <div className={styles.formGroup}>
+            <label className={styles.label}>
+              SKU
+            </label>
+            <input
+              type="text"
+              value={searchParams.sku}
+              onChange={(e) => setSearchParams(prev => ({ ...prev, sku: e.target.value }))}
+              placeholder="e.g. TKN1766"
+              className={styles.input}
+            />
+          </div>
+        )}
 
         <button 
           type="submit"
           className={styles.button}
           disabled={loading}
         >
-          {loading ? 'Aranıyor...' : 'Ara'}
+          {loading ? 'Searching...' : 'Search'}
         </button>
       </form>
 

@@ -58,8 +58,8 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const pageToken = searchParams.get('page_token')
-    const attributeName = searchParams.get('attribute_name')
-    const attributeValue = searchParams.get('attribute_value')
+    const price = searchParams.get('price')
+    const sku = searchParams.get('sku')
     
     // Get access token from cookies
     const cookieStore = cookies()
@@ -114,7 +114,7 @@ export async function GET(request: NextRequest) {
       app_key: APP_KEY,
       timestamp: Math.floor(Date.now() / 1000).toString(),
       shop_cipher: shopCipher,
-      page_size: '20',
+      page_size: '50',
       ...(pageToken && { page_token: pageToken })
     }
     
@@ -170,16 +170,19 @@ export async function GET(request: NextRequest) {
       })) || []
     })) || []
 
-    // Filter by sales attributes if specified
-    if (attributeName && attributeValue) {
+    // Filter by price or SKU if specified
+    if (price || sku) {
       formattedProducts = formattedProducts.map((product: Product) => ({
         ...product,
-        variants: product.variants.filter((variant: Variant) => 
-          variant.sales_attributes.some((attr: SalesAttribute) => 
-            attr.name === attributeName && 
-            attr.value_name.toLowerCase().includes(attributeValue.toLowerCase())
-          )
-        )
+        variants: product.variants.filter((variant: Variant) => {
+          if (price) {
+            return variant.price.original === price || variant.price.sale === price
+          }
+          if (sku) {
+            return variant.seller_sku.toLowerCase().includes(sku.toLowerCase())
+          }
+          return true
+        })
       })).filter((product: Product) => product.variants.length > 0)
     }
 
