@@ -7,11 +7,16 @@ interface Price {
   sale: string;
 }
 
+interface SalesAttribute {
+  name: string;
+  value_name: string;
+}
+
 interface Variant {
   id: string;
   seller_sku: string;
   title: string;
-  value_name?: string;
+  sales_attributes: SalesAttribute[];
   price: Price;
   inventory: number;
 }
@@ -45,10 +50,9 @@ export default function ProductTable({
   const [newPrice, setNewPrice] = useState('');
   const [loading, setLoading] = useState(false);
   
-  // Extract value_name from variant title
-  const getValueName = (title: string): string => {
-    const match = title.match(/:\s*([^,]+)(?:,|$)/);
-    return match ? match[1].trim() : title;
+  // Get variant value by attribute name
+  const getVariantValue = (variant: Variant, attributeName: string): string => {
+    return variant.sales_attributes?.find(attr => attr.name === attributeName)?.value_name || '';
   };
 
   // Handle checkbox changes
@@ -75,7 +79,7 @@ export default function ProductTable({
       const product = products.find(p => p.id === productId);
       if (product) {
         product.variants.forEach(variant => {
-          const valueName = getValueName(variant.title);
+          const valueName = getVariantValue(variant, 'PRINT Size');
           if (valueName.includes(targetVariant)) {
             updates.push({
               productId: product.id,
@@ -135,7 +139,8 @@ export default function ProductTable({
             <th>Status</th>
             <th>Last Updated</th>
             <th>SKU</th>
-            <th>Size/Variant</th>
+            <th>Size</th>
+            <th>Color</th>
             <th>Price</th>
             <th>Stock</th>
           </tr>
@@ -161,7 +166,8 @@ export default function ProductTable({
                   </>
                 )}
                 <td>{variant.seller_sku}</td>
-                <td>{getValueName(variant.title)}</td>
+                <td>{getVariantValue(variant, 'PRINT Size')}</td>
+                <td>{getVariantValue(variant, 'Color')}</td>
                 <td>
                   {variant.price.currency} {variant.price.sale}
                 </td>

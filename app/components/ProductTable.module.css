@@ -6,12 +6,16 @@
 
 .header {
   margin-bottom: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .header h2 {
   font-size: 1.5rem;
   font-weight: 600;
   color: #333;
+  margin: 0;
 }
 
 .table {
@@ -27,13 +31,10 @@
 
 .table th,
 .table td {
-  padding: 12px;
+  padding: 12px 16px;
   text-align: left;
   border-bottom: 1px solid #eee;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 200px;
+  font-size: 0.9rem;
 }
 
 .table th {
@@ -43,21 +44,49 @@
   position: sticky;
   top: 0;
   z-index: 1;
+  white-space: nowrap;
 }
 
 .table td {
   vertical-align: middle;
 }
 
+/* Column specific styles */
+.table td:nth-child(2) { /* Product Name */
+  max-width: 300px;
+  white-space: normal;
+  word-wrap: break-word;
+}
+
+.table td:nth-child(5), /* SKU */
+.table td:nth-child(6), /* Size */
+.table td:nth-child(7) { /* Color */
+  white-space: nowrap;
+  font-family: monospace;
+}
+
+.table td:nth-child(8) { /* Price */
+  text-align: right;
+  font-weight: 500;
+}
+
+.table td:nth-child(9) { /* Stock */
+  text-align: right;
+  font-weight: 500;
+  color: #28a745;
+}
+
 .checkboxCell {
   width: 40px;
   text-align: center !important;
+  padding: 0 !important;
 }
 
 .checkboxCell input[type="checkbox"] {
   width: 16px;
   height: 16px;
   cursor: pointer;
+  margin: 0;
 }
 
 .firstVariant td {
@@ -130,6 +159,7 @@
   margin-bottom: 8px;
   color: #666;
   font-size: 0.9rem;
+  font-weight: 500;
 }
 
 .updateForm input {
@@ -138,6 +168,7 @@
   border: 1px solid #dee2e6;
   border-radius: 4px;
   font-size: 0.9rem;
+  transition: all 0.2s;
 }
 
 .updateForm input:focus {
@@ -156,6 +187,7 @@
   font-size: 0.9rem;
   transition: all 0.2s;
   white-space: nowrap;
+  height: 38px;
 }
 
 .updateForm button:hover {
