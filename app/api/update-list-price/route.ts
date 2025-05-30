@@ -114,11 +114,30 @@ export async function POST(request: NextRequest) {
     })
     
     const productData = await productResponse.json()
+    console.log('Product Details Response:', JSON.stringify(productData, null, 2))
     
     if (!productResponse.ok || productData.code !== 0) {
+      console.error('Failed to get product details:', {
+        status: productResponse.status,
+        statusText: productResponse.statusText,
+        data: productData
+      })
       return NextResponse.json({
         success: false,
         error: 'Failed to get product details',
+        details: {
+          status: productResponse.status,
+          message: productData.message || 'Unknown error',
+          data: productData
+        }
+      }, { status: productResponse.status || 400 })
+    }
+
+    if (!productData.data) {
+      console.error('Product data is empty:', productData)
+      return NextResponse.json({
+        success: false,
+        error: 'Product data is empty',
         details: productData
       }, { status: 400 })
     }
@@ -126,18 +145,11 @@ export async function POST(request: NextRequest) {
     const categoryId = productData.data?.category_chains?.[productData.data.category_chains.length - 1]?.id
     const mainImages = productData.data?.images
 
-    if (!mainImages || mainImages.length === 0) {
-      return NextResponse.json({
-        success: false,
-        error: 'Product must have main images',
-        details: productData
-      }, { status: 400 })
-    }
-
     if (!categoryId) {
+      console.error('Category ID not found in product data:', productData.data)
       return NextResponse.json({
         success: false,
-        error: 'Failed to get category ID from product',
+        error: 'Category ID not found in product data',
         details: productData
       }, { status: 400 })
     }
@@ -150,6 +162,14 @@ export async function POST(request: NextRequest) {
       shop_cipher: shopCipher
     }
 
+    console.log('Product Data:', {
+      categoryId,
+      mainImages,
+      productId,
+      skuId,
+      listPrice
+    })
+
     const updateBody = {
       skus: [{
         id: skuId,
@@ -160,6 +180,12 @@ export async function POST(request: NextRequest) {
         }
       }]
     }
+    
+    console.log('Update Request:', {
+      url: updatePath,
+      params: updateParams,
+      body: updateBody
+    })
     
     const updateSign = generateSignature(updatePath, updateParams, updateBody, APP_SECRET)
     const updateQueryParams = new URLSearchParams({
