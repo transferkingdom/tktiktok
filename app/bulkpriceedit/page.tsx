@@ -21,22 +21,35 @@ export default function BulkPriceEdit() {
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    if (!searchPrice) {
+      setError('Please enter a price to search')
+      return
+    }
+
     setError('')
     setLoading(true)
 
     try {
+      // Format the search price to 2 decimal places
+      const formattedPrice = Number(searchPrice).toFixed(2)
+      
       const response = await fetch('/api/search-by-price', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ searchPrice })
+        body: JSON.stringify({ searchPrice: formattedPrice })
       })
 
       const data = await response.json()
 
       if (!response.ok) {
         throw new Error(data.error || 'An error occurred during search')
+      }
+
+      if (data.skus.length === 0) {
+        setError(`No SKUs found with price $${formattedPrice}`)
       }
 
       setSkus(data.skus)
@@ -55,6 +68,9 @@ export default function BulkPriceEdit() {
     setLoading(true)
 
     try {
+      // Format the new price to 2 decimal places
+      const formattedNewPrice = Number(newPrice).toFixed(2)
+      
       const skusToUpdate = skus.filter(sku => selectedSkus.has(sku.sku_id))
       const response = await fetch('/api/bulk-update-prices', {
         method: 'POST',
@@ -65,7 +81,7 @@ export default function BulkPriceEdit() {
           updates: skusToUpdate.map(sku => ({
             product_id: sku.product_id,
             sku_id: sku.sku_id,
-            price: newPrice
+            price: formattedNewPrice
           }))
         })
       })
@@ -119,8 +135,10 @@ export default function BulkPriceEdit() {
                 onChange={(e) => setSearchPrice(e.target.value)}
                 placeholder="e.g. 3.50"
                 className={styles.input}
+                min="0"
+                required
               />
-              <button type="submit" className={styles.button} disabled={loading}>
+              <button type="submit" className={styles.button} disabled={loading || !searchPrice}>
                 {loading ? 'Searching...' : 'Search'}
               </button>
             </div>
@@ -138,6 +156,7 @@ export default function BulkPriceEdit() {
                 onChange={(e) => setNewPrice(e.target.value)}
                 placeholder="New price"
                 className={styles.input}
+                min="0"
               />
               <button 
                 onClick={handleUpdatePrices} 
@@ -181,7 +200,7 @@ export default function BulkPriceEdit() {
                 </td>
                 <td>{sku.product_name}</td>
                 <td>{sku.seller_sku}</td>
-                <td>${sku.price}</td>
+                <td>${Number(sku.price).toFixed(2)}</td>
               </tr>
             ))}
           </tbody>

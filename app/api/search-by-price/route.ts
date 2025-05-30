@@ -26,6 +26,16 @@ export async function POST(request: NextRequest) {
   try {
     const { searchPrice } = await request.json()
     
+    if (!searchPrice) {
+      return NextResponse.json(
+        { error: 'Search price is required' },
+        { status: 400 }
+      )
+    }
+
+    // Convert search price to string with 2 decimal places for consistent comparison
+    const normalizedSearchPrice = Number(searchPrice).toFixed(2)
+    
     // Get access token from cookies
     const cookieStore = cookies()
     const shopAccessToken = cookieStore.get('tiktok_shop_access_token')?.value
@@ -97,6 +107,7 @@ export async function POST(request: NextRequest) {
     })
     
     const productsData = await productsResponse.json()
+    console.log('Products Response:', JSON.stringify(productsData, null, 2))
 
     // Filter products by price
     const matchingSkus = []
@@ -104,7 +115,10 @@ export async function POST(request: NextRequest) {
     for (const product of productsData.data?.products || []) {
       if (product.skus) {
         for (const sku of product.skus) {
-          if (sku.price?.tax_exclusive_price === searchPrice) {
+          // Convert SKU price to string with 2 decimal places for consistent comparison
+          const skuPrice = Number(sku.price?.tax_exclusive_price).toFixed(2)
+          
+          if (skuPrice === normalizedSearchPrice) {
             matchingSkus.push({
               product_id: product.id,
               product_name: product.title,
@@ -116,6 +130,8 @@ export async function POST(request: NextRequest) {
         }
       }
     }
+
+    console.log(`Found ${matchingSkus.length} matching SKUs for price ${normalizedSearchPrice}`)
 
     return NextResponse.json({
       success: true,
