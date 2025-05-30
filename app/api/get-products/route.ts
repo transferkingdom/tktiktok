@@ -6,90 +6,82 @@ const APP_KEY = '6e8q3qfuc5iqv'
 const APP_SECRET = 'f1a1a446f377780021df9219cb4b029170626997'
 
 function generateSignature(path: string, params: Record<string, string>, body: any, appSecret: string) {
-  // Sort parameters alphabetically, excluding 'sign' and 'access_token'
-  const filteredParams = Object.entries(params)
+  // Step 1: Extract and sort parameters (excluding sign and access_token)
+  const sortedParams = Object.entries(params)
     .filter(([key]) => key !== 'sign' && key !== 'access_token')
     .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, value]) => ({ key, value }))
 
-  // Build signature string: appSecret + path + sorted params with keys + body + appSecret
-  let signString = appSecret + path
+  // Step 2: Create parameter string in {key}{value} format
+  const paramString = sortedParams
+    .map(({ key, value }) => `${key}${value}`)
+    .join('')
 
-  // Add sorted parameters with their keys
-  filteredParams.forEach(([key, value]) => {
-    signString += key + value
-  })
+  // Step 3: Combine path and parameters
+  let signString = `${path}${paramString}`
 
-  // Add request body if exists and is not empty
+  // Step 4: Add request body if exists and not multipart/form-data
   if (body && Object.keys(body).length > 0) {
     signString += JSON.stringify(body)
   }
 
-  signString += appSecret
+  // Step 5: Wrap with app_secret
+  signString = `${appSecret}${signString}${appSecret}`
 
   console.log('Raw signature string:', signString)
-  console.log('Filtered params:', Object.fromEntries(filteredParams))
-  
-  // Generate HMAC SHA256
+  console.log('Sorted params:', sortedParams)
+
+  // Step 6: Generate HMAC-SHA256
   return crypto.createHmac('sha256', appSecret).update(signString).digest('hex')
 }
 
 async function getAuthorizedShop(accessToken: string) {
   try {
     const baseUrl = 'https://open-api.tiktokglobalshop.com'
-    const shopsPath = '/authorization/202309/shops'
+    const path = '/authorization/202309/shops'
     const timestamp = Math.floor(Date.now() / 1000).toString()
     
-    const shopsParams = {
+    const params = {
       app_key: APP_KEY,
-      timestamp: timestamp,
-      version: '202309'  // Adding API version as parameter
+      timestamp: timestamp
     }
     
-    const requestBody = {}
-    const shopsSign = generateSignature(shopsPath, shopsParams, requestBody, APP_SECRET)
+    const sign = generateSignature(path, params, null, APP_SECRET)
     
     console.log('Shop Authorization Request:')
-    console.log('- Path:', shopsPath)
-    console.log('- Params:', shopsParams)
-    console.log('- Sign:', shopsSign)
-    console.log('- Access Token:', accessToken.substring(0, 10) + '...')
+    console.log('- Path:', path)
+    console.log('- Params:', params)
+    console.log('- Sign:', sign)
     
-    const shopsQueryParams = new URLSearchParams({
-      ...shopsParams,
-      sign: shopsSign,
+    const queryParams = new URLSearchParams({
+      ...params,
+      sign: sign,
       access_token: accessToken
     })
     
-    const url = `${baseUrl}${shopsPath}?${shopsQueryParams.toString()}`
+    const url = `${baseUrl}${path}?${queryParams.toString()}`
     console.log('Full URL:', url)
     
-    const shopsResponse = await fetch(url, {
+    const response = await fetch(url, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
-        'X-TTS-Access-Token': accessToken,
-        'User-Agent': 'TikTok Shop API Client'  // Adding User-Agent header
+        'X-TTS-Access-Token': accessToken
       }
     })
     
-    if (!shopsResponse.ok) {
-      const errorText = await shopsResponse.text()
-      console.error('HTTP Error Response:', errorText)
-      throw new Error(`HTTP error! status: ${shopsResponse.status}`)
+    const data = await response.json()
+    console.log('Shop Response:', JSON.stringify(data, null, 2))
+    
+    if (data.code !== 0) {
+      throw new Error(`Failed to get shop data: ${data.message}`)
     }
     
-    const shopsData = await shopsResponse.json()
-    console.log('Shop Response:', JSON.stringify(shopsData, null, 2))
-    
-    if (shopsData.code !== 0) {
-      throw new Error(`Failed to get shop data: ${shopsData.message}`)
-    }
-    
-    if (!shopsData.data?.shops?.[0]?.cipher) {
+    if (!data.data?.shops?.[0]?.cipher) {
       throw new Error('No shop cipher found in response')
     }
     
-    return shopsData.data.shops[0].cipher
+    return data.data.shops[0].cipher
   } catch (error) {
     console.error('Shop Authorization Error:', error)
     throw new Error(error instanceof Error ? error.message : 'Failed to get shop cipher')
@@ -98,7 +90,6 @@ async function getAuthorizedShop(accessToken: string) {
 
 export async function GET(request: NextRequest) {
   try {
-    // Get access token from cookies
     const cookieStore = cookies()
     const shopAccessToken = cookieStore.get('tiktok_shop_access_token')?.value
     const legacyAccessToken = cookieStore.get('tiktok_access_token')?.value
@@ -111,14 +102,11 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Get shop cipher
     const shopCipher = await getAuthorizedShop(accessToken)
     console.log('Shop cipher:', shopCipher)
 
-    // Get products
-    const baseUrl = 'https://open-api.tiktokglobalshop.com'
-    const productsPath = '/product/202309/products/search'
-    const productsParams = {
+    const path = '/product/202309/products/search'
+    const params = {
       app_key: APP_KEY,
       timestamp: Math.floor(Date.now() / 1000).toString(),
       shop_cipher: shopCipher,
@@ -126,36 +114,37 @@ export async function GET(request: NextRequest) {
       page_number: '1'
     }
 
-    const requestBody = {} // Empty body for search request
+    const body = {}
+    const sign = generateSignature(path, params, body, APP_SECRET)
     
-    const productsSign = generateSignature(productsPath, productsParams, requestBody, APP_SECRET)
-    const productsQueryParams = new URLSearchParams({
-      ...productsParams,
-      sign: productsSign,
+    const queryParams = new URLSearchParams({
+      ...params,
+      sign: sign,
       access_token: accessToken
     })
     
-    const productsResponse = await fetch(`${baseUrl}${productsPath}?${productsQueryParams.toString()}`, {
+    const url = `https://open-api.tiktokglobalshop.com${path}?${queryParams.toString()}`
+    
+    const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-TTS-Access-Token': accessToken
       },
-      body: JSON.stringify(requestBody)
+      body: JSON.stringify(body)
     })
     
-    const productsData = await productsResponse.json()
-    console.log('Products Response:', JSON.stringify(productsData, null, 2))
+    const data = await response.json()
+    console.log('Products Response:', JSON.stringify(data, null, 2))
 
-    if (productsData.code !== 0) {
+    if (data.code !== 0) {
       return NextResponse.json({
         success: false,
-        error: productsData.message || 'Failed to get products'
+        error: data.message || 'Failed to get products'
       }, { status: 400 })
     }
 
-    // Format products for frontend
-    const formattedProducts = productsData.data?.products?.map((product: any) => ({
+    const formattedProducts = data.data?.products?.map((product: any) => ({
       id: product.id,
       name: product.title,
       variants: product.skus?.map((sku: any) => ({
