@@ -92,11 +92,12 @@ export async function POST(request: NextRequest) {
     const productsParams = {
       app_key: APP_KEY,
       timestamp: Math.floor(Date.now() / 1000).toString(),
-      shop_cipher: shopCipher
+      shop_cipher: shopCipher,
+      page_size: '40'
     }
 
     const productsBody = {
-      page_size: 40
+      // Empty body for now, we'll add filters if needed
     }
     
     const productsSign = generateSignature(productsPath, productsParams, productsBody, APP_SECRET)
