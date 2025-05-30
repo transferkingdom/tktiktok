@@ -10,17 +10,36 @@
   margin-bottom: 1.5rem;
 }
 
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.increaseForm {
+  background-color: #f8fafc;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  border: 1px solid #e2e8f0;
+}
+
 .searchForm {
   display: flex;
   gap: 1rem;
   align-items: flex-end;
-  margin-bottom: 1.5rem;
 }
 
 .formGroup {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+}
+
+.inputGroup {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
 }
 
 .label {
@@ -50,6 +69,7 @@
   font-weight: 500;
   cursor: pointer;
   transition: background-color 0.2s;
+  white-space: nowrap;
 }
 
 .button:hover {
