@@ -141,6 +141,40 @@ export async function POST(request: NextRequest) {
     for (const product of productsData.data.products) {
       if (!product.skus) continue
       
+      // Get product details if not available in search results
+      let productTitle = product.title
+      if (!productTitle) {
+        try {
+          const productDetailsPath = `/product/202309/products/${product.id}`
+          const productDetailsParams = {
+            app_key: APP_KEY,
+            timestamp: Math.floor(Date.now() / 1000).toString(),
+            shop_cipher: shopCipher
+          }
+          
+          const productDetailsSign = generateSignature(productDetailsPath, productDetailsParams, null, APP_SECRET)
+          const productDetailsQueryParams = new URLSearchParams({
+            ...productDetailsParams,
+            sign: productDetailsSign,
+            access_token: accessToken
+          })
+          
+          const productDetailsResponse = await fetch(`${baseUrl}${productDetailsPath}?${productDetailsQueryParams.toString()}`, {
+            headers: {
+              'Content-Type': 'application/json',
+              'X-TTS-Access-Token': accessToken
+            }
+          })
+          
+          const productDetails = await productDetailsResponse.json()
+          if (productDetails.code === 0 && productDetails.data?.title) {
+            productTitle = productDetails.data.title
+          }
+        } catch (error) {
+          console.error('Failed to get product details:', error)
+        }
+      }
+      
       for (const sku of product.skus) {
         if (!sku.price?.tax_exclusive_price) continue
         
@@ -152,11 +186,16 @@ export async function POST(request: NextRequest) {
             product_id: product.id,
             sku_id: sku.id,
             seller_sku: sku.seller_sku,
-            title: product.title || 'Untitled Product',
+            title: productTitle || `Product ${product.id}`,
             price: skuPrice
           })
         }
       }
+    }
+
+    // Add delay between requests to avoid rate limits
+    if (productsData.data.next_page_token) {
+      await new Promise(resolve => setTimeout(resolve, 1000))
     }
 
     return NextResponse.json({
@@ -169,12 +208,7 @@ export async function POST(request: NextRequest) {
     
   } catch (error) {
     console.error('❌ Search Products Error:', error)
-    return NextResponse.json(
-      { 
-        error: 'Failed to search products', 
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
-    )
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    return NextResponse.json({ error: errorMessage }, { status: 500 })
   }
 } 

@@ -1,24 +1,24 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import styles from './page.module.css'
 
 interface Sku {
   product_id: string
-  product_name: string
   sku_id: string
   seller_sku: string
+  title: string
   price: string
 }
+
+const MAX_SELECTION = 100 // Maximum number of SKUs that can be selected at once
 
 export default function BulkPriceEdit() {
   const [searchPrice, setSearchPrice] = useState('')
   const [newPrice, setNewPrice] = useState('')
-  const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [skus, setSkus] = useState<Sku[]>([])
   const [selectedSkus, setSelectedSkus] = useState<Set<string>>(new Set())
-  const [currentPage, setCurrentPage] = useState(1)
   const [totalCount, setTotalCount] = useState(0)
   const [hasNextPage, setHasNextPage] = useState(false)
   const [nextPageToken, setNextPageToken] = useState<string | null>(null)
@@ -58,6 +58,7 @@ export default function BulkPriceEdit() {
 
       if (!isLoadMore) {
         setSkus(data.skus)
+        setSelectedSkus(new Set()) // Clear selections on new search
       } else {
         setSkus(prev => [...prev, ...data.skus])
       }
@@ -65,19 +66,21 @@ export default function BulkPriceEdit() {
       setTotalCount(data.total)
       setHasNextPage(data.hasNextPage)
       setNextPageToken(data.nextPageToken)
-      setSelectedSkus(new Set()) // Clear selections on new search
     } catch (error) {
       console.error('Search error:', error)
       setError(error instanceof Error ? error.message : 'Failed to search')
+      setSkus([])
+      setHasNextPage(false)
+      setNextPageToken(null)
     } finally {
       setSearching(false)
     }
   }
 
-  const loadMore = (e: React.MouseEvent) => {
+  const loadMore = useCallback((e: React.MouseEvent) => {
     if (!hasNextPage || searching) return
     handleSearch(e as any, true)
-  }
+  }, [hasNextPage, searching, nextPageToken])
 
   const handleUpdatePrices = async () => {
     if (!newPrice || selectedSkus.size === 0) return
@@ -86,7 +89,6 @@ export default function BulkPriceEdit() {
     setUpdating(true)
 
     try {
-      // Format the new price to 2 decimal places
       const formattedNewPrice = Number(newPrice).toFixed(2)
       
       const skusToUpdate = skus.filter(sku => selectedSkus.has(sku.sku_id))
@@ -110,10 +112,7 @@ export default function BulkPriceEdit() {
         throw new Error(data.error || 'An error occurred during price update')
       }
 
-      // Show success message
-      setError('Prices updated successfully!')
-      
-      // Clear selections
+      setError('✅ Prices updated successfully!')
       setSelectedSkus(new Set())
       setNewPrice('')
 
@@ -121,8 +120,9 @@ export default function BulkPriceEdit() {
       setTimeout(() => {
         handleSearch(new Event('submit') as any)
       }, 2000)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An unexpected error occurred')
+    } catch (error) {
+      console.error('Update error:', error)
+      setError(error instanceof Error ? error.message : 'Failed to update prices')
     } finally {
       setUpdating(false)
     }
@@ -130,6 +130,10 @@ export default function BulkPriceEdit() {
 
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) {
+      if (skus.length > MAX_SELECTION) {
+        setError(`You can select maximum ${MAX_SELECTION} SKUs at once`)
+        return
+      }
       setSelectedSkus(new Set(skus.map(sku => sku.sku_id)))
     } else {
       setSelectedSkus(new Set())
@@ -140,10 +144,15 @@ export default function BulkPriceEdit() {
     const newSelected = new Set(selectedSkus)
     if (newSelected.has(skuId)) {
       newSelected.delete(skuId)
+      setSelectedSkus(newSelected)
     } else {
+      if (newSelected.size >= MAX_SELECTION) {
+        setError(`You can select maximum ${MAX_SELECTION} SKUs at once`)
+        return
+      }
       newSelected.add(skuId)
+      setSelectedSkus(newSelected)
     }
-    setSelectedSkus(newSelected)
   }
 
   return (
@@ -161,7 +170,7 @@ export default function BulkPriceEdit() {
               step="0.01"
               value={searchPrice}
               onChange={(e) => setSearchPrice(e.target.value)}
-              placeholder="e.g. 3.50"
+              placeholder="e.g. 4.25"
               className={styles.input}
               min="0"
               required
@@ -192,7 +201,11 @@ export default function BulkPriceEdit() {
           </button>
         </div>
 
-        {error && <div className={styles.error}>{error}</div>}
+        {error && (
+          <div className={error.startsWith('✅') ? styles.success : styles.error}>
+            {error}
+          </div>
+        )}
 
         <div className={styles.tableContainer}>
           <table className={styles.table}>
@@ -203,6 +216,7 @@ export default function BulkPriceEdit() {
                     type="checkbox"
                     onChange={handleSelectAll}
                     checked={skus.length > 0 && selectedSkus.size === skus.length}
+                    disabled={skus.length > MAX_SELECTION}
                   />
                 </th>
                 <th>Product Name</th>
@@ -218,11 +232,12 @@ export default function BulkPriceEdit() {
                       type="checkbox"
                       checked={selectedSkus.has(sku.sku_id)}
                       onChange={() => handleSelectSku(sku.sku_id)}
+                      disabled={!selectedSkus.has(sku.sku_id) && selectedSkus.size >= MAX_SELECTION}
                     />
                   </td>
-                  <td>{sku.product_name}</td>
+                  <td>{sku.title}</td>
                   <td>{sku.seller_sku}</td>
-                  <td>${Number(sku.price).toFixed(2)}</td>
+                  <td>${sku.price}</td>
                 </tr>
               ))}
             </tbody>
@@ -240,6 +255,7 @@ export default function BulkPriceEdit() {
         {skus.length > 0 && (
           <div className={styles.summary}>
             Found {totalCount} total SKUs with price ${searchPrice}
+            {selectedSkus.size > 0 && ` (${selectedSkus.size} selected)`}
           </div>
         )}
       </div>
