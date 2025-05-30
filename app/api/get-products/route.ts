@@ -5,22 +5,34 @@ import crypto from 'crypto'
 const APP_KEY = '6e8q3qfuc5iqv'
 const APP_SECRET = 'f1a1a446f377780021df9219cb4b029170626997'
 
-function generateSignature(path: string, params: Record<string, string>, appSecret: string) {
+function generateSignature(path: string, params: Record<string, string>, body: any, appSecret: string) {
+  // Sort parameters alphabetically
   const sortedParams = Object.keys(params).sort().reduce((acc, key) => {
     acc[key] = params[key]
     return acc
   }, {} as Record<string, string>)
 
-  let signString = appSecret + path
-  for (const [key, value] of Object.entries(sortedParams)) {
+  // Build signature string
+  let signString = path // Start with path, without appSecret prefix
+  
+  // Add sorted parameters
+  Object.entries(sortedParams).forEach(([key, value]) => {
     if (key !== 'sign' && key !== 'access_token') {
       signString += key + value
     }
+  })
+
+  // Add request body if exists
+  if (body) {
+    signString += JSON.stringify(body)
   }
+
+  // Add app secret at the end
   signString += appSecret
 
-  console.log('Signature string:', signString)
+  console.log('Raw signature string:', signString)
   
+  // Generate HMAC SHA256
   return crypto.createHmac('sha256', appSecret).update(signString).digest('hex')
 }
 
@@ -32,7 +44,7 @@ async function getAuthorizedShop(accessToken: string) {
     timestamp: Math.floor(Date.now() / 1000).toString()
   }
   
-  const shopsSign = generateSignature(shopsPath, shopsParams, APP_SECRET)
+  const shopsSign = generateSignature(shopsPath, shopsParams, {}, APP_SECRET)
   const shopsQueryParams = new URLSearchParams({
     ...shopsParams,
     sign: shopsSign,
@@ -84,8 +96,10 @@ export async function GET(request: NextRequest) {
       page_size: '100',
       page_number: '1'
     }
+
+    const requestBody = {} // Empty body for search request
     
-    const productsSign = generateSignature(productsPath, productsParams, APP_SECRET)
+    const productsSign = generateSignature(productsPath, productsParams, requestBody, APP_SECRET)
     const productsQueryParams = new URLSearchParams({
       ...productsParams,
       sign: productsSign,
@@ -93,12 +107,12 @@ export async function GET(request: NextRequest) {
     })
     
     const productsResponse = await fetch(`${baseUrl}${productsPath}?${productsQueryParams.toString()}`, {
-      method: 'POST', // TikTok API requires POST for search
+      method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-TTS-Access-Token': accessToken
       },
-      body: JSON.stringify({}) // Empty body for getting all products
+      body: JSON.stringify(requestBody)
     })
     
     const productsData = await productsResponse.json()
