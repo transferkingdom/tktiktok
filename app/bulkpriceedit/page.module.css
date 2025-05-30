@@ -17,17 +17,18 @@
   margin-bottom: 1.5rem;
 }
 
-.increaseForm {
+.searchForm {
   background-color: #f8fafc;
   padding: 1rem;
   border-radius: 0.5rem;
   border: 1px solid #e2e8f0;
 }
 
-.searchForm {
-  display: flex;
-  gap: 1rem;
-  align-items: flex-end;
+.updateForm {
+  background-color: #f8fafc;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  border: 1px solid #e2e8f0;
 }
 
 .formGroup {
@@ -48,15 +49,11 @@
   color: #374151;
 }
 
-.select,
 .input {
   padding: 0.5rem 0.75rem;
   border: 1px solid #d1d5db;
   border-radius: 0.25rem;
   font-size: 0.875rem;
-}
-
-.input {
   width: 16rem;
 }
 
@@ -88,4 +85,39 @@
   border-radius: 0.25rem;
   color: #b91c1c;
   margin-bottom: 1rem;
+}
+
+.results {
+  background-color: white;
+  border-radius: 0.5rem;
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th,
+.table td {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.table th {
+  background-color: #f8fafc;
+  font-weight: 500;
+  color: #374151;
+}
+
+.table tr:hover {
+  background-color: #f8fafc;
+}
+
+.table input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  cursor: pointer;
 } 

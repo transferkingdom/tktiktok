@@ -1,169 +1,192 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import ProductTable from '../components/ProductTable'
+import { useState } from 'react'
 import styles from './page.module.css'
 
-interface SearchParams {
-  searchType: 'price' | 'sku';
-  price?: string;
-  sku?: string;
+interface Sku {
+  product_id: string
+  product_name: string
+  sku_id: string
+  seller_sku: string
+  price: string
 }
 
 export default function BulkPriceEdit() {
-  const [products, setProducts] = useState<any[]>([])
-  const [totalCount, setTotalCount] = useState(0)
-  const [nextPageToken, setNextPageToken] = useState<string>()
-  const [loading, setLoading] = useState(true)
+  const [searchPrice, setSearchPrice] = useState('')
+  const [newPrice, setNewPrice] = useState('')
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [searchParams, setSearchParams] = useState<SearchParams>({
-    searchType: 'price',
-    price: '',
-    sku: ''
-  })
+  const [skus, setSkus] = useState<Sku[]>([])
+  const [selectedSkus, setSelectedSkus] = useState<Set<string>>(new Set())
 
-  const fetchProducts = async (pageToken?: string) => {
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+    setLoading(true)
+
     try {
-      setLoading(true)
-      const params = new URLSearchParams()
-      if (pageToken) {
-        params.append('page_token', pageToken)
-      }
-      
-      if (searchParams.searchType === 'price' && searchParams.price) {
-        params.append('price', searchParams.price)
-      } else if (searchParams.searchType === 'sku' && searchParams.sku) {
-        params.append('sku', searchParams.sku)
-      }
+      const response = await fetch('/api/search-by-price', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ searchPrice })
+      })
 
-      const response = await fetch(`/api/get-products?${params.toString()}`)
       const data = await response.json()
 
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to fetch products')
+      if (!response.ok) {
+        throw new Error(data.error || 'An error occurred during search')
       }
 
-      if (pageToken) {
-        setProducts(prev => [...prev, ...data.products])
-      } else {
-        setProducts(data.products)
-      }
-      
-      setTotalCount(data.total_count)
-      setNextPageToken(data.next_page_token)
+      setSkus(data.skus)
+      setSelectedSkus(new Set())
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred')
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred')
     } finally {
       setLoading(false)
     }
   }
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault()
-    fetchProducts()
-  }
+  const handleUpdatePrices = async () => {
+    if (!newPrice || selectedSkus.size === 0) return
 
-  const handleUpdatePrices = async (updates: Array<{productId: string, skuId: string, variantName: string, newPrice: string}>) => {
+    setError('')
+    setLoading(true)
+
     try {
+      const skusToUpdate = skus.filter(sku => selectedSkus.has(sku.sku_id))
       const response = await fetch('/api/bulk-update-prices', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ updates })
+        body: JSON.stringify({
+          updates: skusToUpdate.map(sku => ({
+            product_id: sku.product_id,
+            sku_id: sku.sku_id,
+            price: newPrice
+          }))
+        })
       })
 
       const data = await response.json()
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to update prices')
+
+      if (!response.ok) {
+        throw new Error(data.error || 'An error occurred during price update')
       }
 
-      // Refresh the product list
-      fetchProducts()
+      // Refresh the search results
+      handleSearch(new Event('submit') as any)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update prices')
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred')
+    } finally {
+      setLoading(false)
     }
   }
 
-  useEffect(() => {
-    fetchProducts()
-  }, [])
+  const toggleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedSkus(new Set(skus.map(sku => sku.sku_id)))
+    } else {
+      setSelectedSkus(new Set())
+    }
+  }
+
+  const toggleSelectSku = (skuId: string) => {
+    const newSelected = new Set(selectedSkus)
+    if (newSelected.has(skuId)) {
+      newSelected.delete(skuId)
+    } else {
+      newSelected.add(skuId)
+    }
+    setSelectedSkus(newSelected)
+  }
 
   return (
     <div className={styles.container}>
       <h1 className={styles.title}>Bulk Price Update</h1>
       
-      <form onSubmit={handleSearch} className={styles.searchForm}>
-        <div className={styles.formGroup}>
-          <label className={styles.label}>
-            Search Type
-          </label>
-          <select 
-            value={searchParams.searchType}
-            onChange={(e) => setSearchParams(prev => ({ 
-              ...prev, 
-              searchType: e.target.value as 'price' | 'sku',
-              price: '',
-              sku: ''
-            }))}
-            className={styles.select}
-          >
-            <option value="price">Price</option>
-            <option value="sku">SKU</option>
-          </select>
-        </div>
-        
-        {searchParams.searchType === 'price' ? (
+      <div className={styles.actions}>
+        <form onSubmit={handleSearch} className={styles.searchForm}>
           <div className={styles.formGroup}>
-            <label className={styles.label}>
-              Price
-            </label>
-            <input
-              type="number"
-              step="0.01"
-              value={searchParams.price}
-              onChange={(e) => setSearchParams(prev => ({ ...prev, price: e.target.value }))}
-              placeholder="e.g. 4.25"
-              className={styles.input}
-            />
+            <label className={styles.label}>Search Price:</label>
+            <div className={styles.inputGroup}>
+              <input 
+                type="number" 
+                step="0.01"
+                value={searchPrice}
+                onChange={(e) => setSearchPrice(e.target.value)}
+                placeholder="e.g. 3.50"
+                className={styles.input}
+              />
+              <button type="submit" className={styles.button} disabled={loading}>
+                {loading ? 'Searching...' : 'Search'}
+              </button>
+            </div>
           </div>
-        ) : (
+        </form>
+
+        <div className={styles.updateForm}>
           <div className={styles.formGroup}>
-            <label className={styles.label}>
-              SKU
-            </label>
-            <input
-              type="text"
-              value={searchParams.sku}
-              onChange={(e) => setSearchParams(prev => ({ ...prev, sku: e.target.value }))}
-              placeholder="e.g. TKN1766"
-              className={styles.input}
-            />
+            <label className={styles.label}>New Price for Selected SKUs:</label>
+            <div className={styles.inputGroup}>
+              <input 
+                type="number"
+                step="0.01"
+                value={newPrice}
+                onChange={(e) => setNewPrice(e.target.value)}
+                placeholder="New price"
+                className={styles.input}
+              />
+              <button 
+                onClick={handleUpdatePrices} 
+                className={styles.button} 
+                disabled={loading || selectedSkus.size === 0 || !newPrice}
+              >
+                {loading ? 'Updating...' : 'Update Prices'}
+              </button>
+            </div>
           </div>
-        )}
-
-        <button 
-          type="submit"
-          className={styles.button}
-          disabled={loading}
-        >
-          {loading ? 'Searching...' : 'Search'}
-        </button>
-      </form>
-
-      {error && (
-        <div className={styles.error}>
-          {error}
         </div>
-      )}
+      </div>
 
-      <ProductTable
-        products={products}
-        totalCount={totalCount}
-        nextPageToken={nextPageToken}
-        onUpdatePrices={handleUpdatePrices}
-        onLoadMore={(pageToken) => fetchProducts(pageToken)}
-      />
+      {error && <div className={styles.error}>{error}</div>}
+
+      <div className={styles.results}>
+        <table className={styles.table}>
+          <thead>
+            <tr>
+              <th>
+                <input 
+                  type="checkbox"
+                  checked={selectedSkus.size === skus.length && skus.length > 0}
+                  onChange={(e) => toggleSelectAll(e.target.checked)}
+                />
+              </th>
+              <th>Product Name</th>
+              <th>SKU</th>
+              <th>Current Price</th>
+            </tr>
+          </thead>
+          <tbody>
+            {skus.map(sku => (
+              <tr key={sku.sku_id}>
+                <td>
+                  <input 
+                    type="checkbox"
+                    checked={selectedSkus.has(sku.sku_id)}
+                    onChange={() => toggleSelectSku(sku.sku_id)}
+                  />
+                </td>
+                <td>{sku.product_name}</td>
+                <td>{sku.seller_sku}</td>
+                <td>${sku.price}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 } 
