@@ -415,7 +415,7 @@ Page will reload to show authorized state.`)
         if (product) {
           const updatedProduct = {
             ...product,
-            variants: product.variants.map(v => 
+            variants: product.variants.map((v: ProductVariant) => 
               v.id === variant.id 
                 ? { ...v, price: { original: newPrice, sale: newPrice } }
                 : v
