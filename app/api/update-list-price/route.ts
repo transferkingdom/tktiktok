@@ -124,7 +124,15 @@ export async function POST(request: NextRequest) {
     }
 
     const categoryId = productData.data?.category_chains?.[productData.data.category_chains.length - 1]?.id
-    const mainImages = productData.data?.images || []
+    const mainImages = productData.data?.images
+
+    if (!mainImages || mainImages.length === 0) {
+      return NextResponse.json({
+        success: false,
+        error: 'Product must have main images',
+        details: productData
+      }, { status: 400 })
+    }
 
     if (!categoryId) {
       return NextResponse.json({
@@ -135,7 +143,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Now update the product price
-    const updatePath = '/product/202309/products/prices'
+    const updatePath = `/product/202309/products/${productId}/prices/update`
     const updateParams = {
       app_key: APP_KEY,
       timestamp: Math.floor(Date.now() / 1000).toString(),
@@ -143,15 +151,12 @@ export async function POST(request: NextRequest) {
     }
 
     const updateBody = {
-      product_id: productId,
-      description: "Price update via API",
-      category_id: categoryId,
-      main_images: mainImages,
       skus: [{
         id: skuId,
-        sale_price: listPrice,
-        tax_exclusive_price: listPrice,
-        original_price: listPrice
+        price: {
+          amount: listPrice.toString(),
+          currency: "TRY"
+        }
       }]
     }
     
