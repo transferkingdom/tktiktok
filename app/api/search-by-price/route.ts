@@ -152,20 +152,27 @@ export async function POST(request: NextRequest) {
     }
 
     // Format response for frontend
+    const searchPriceNumber = Number(searchPrice).toFixed(2);
     const formattedSkus = productsData.data.products.flatMap((product: TiktokProduct) => 
-      product.skus?.map((sku: TiktokSku) => ({
-        product_id: product.id,
-        sku_id: sku.id,
-        seller_sku: sku.seller_sku,
-        title: product.title || '',
-        price: sku.price?.tax_exclusive_price || '0'
-      })) || []
+      product.skus?.map((sku: TiktokSku) => {
+        const skuPrice = Number(sku.price?.tax_exclusive_price || 0).toFixed(2);
+        if (skuPrice === searchPriceNumber) {
+          return {
+            product_id: product.id,
+            sku_id: sku.id,
+            seller_sku: sku.seller_sku,
+            title: product.title || '',
+            price: skuPrice
+          };
+        }
+        return null;
+      }).filter(Boolean) || []
     );
 
     return NextResponse.json({
       success: true,
       skus: formattedSkus,
-      total: productsData.data.total_count || 0,
+      total: formattedSkus.length,
       hasNextPage: !!productsData.data.next_page_token,
       nextPageToken: productsData.data.next_page_token || null
     });
