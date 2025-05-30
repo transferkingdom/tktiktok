@@ -64,7 +64,7 @@ async function getAuthorizedShop(accessToken: string) {
 
 async function getProductList(accessToken: string, shopCipher: string) {
   const baseUrl = 'https://open-api.tiktokglobalshop.com'
-  const productsPath = '/api/products/search'
+  const productsPath = '/product/202309/products/search'
   const productsParams = {
     app_key: APP_KEY,
     timestamp: Math.floor(Date.now() / 1000).toString(),
@@ -138,6 +138,49 @@ async function updateProductPrice(accessToken: string, shopCipher: string, produ
   return await updateResponse.json()
 }
 
+async function batchUpdatePrices(accessToken: string, shopCipher: string, updates: Array<{productId: string, skuId: string, price: string}>) {
+  const baseUrl = 'https://open-api.tiktokglobalshop.com'
+  const updatePath = '/product/202309/products/prices/batch_update'
+  const updateParams = {
+    app_key: APP_KEY,
+    timestamp: Math.floor(Date.now() / 1000).toString(),
+    shop_cipher: shopCipher
+  }
+
+  // Prepare batch update payload
+  const updateBody = {
+    products: updates.map(update => ({
+      product_id: update.productId,
+      skus: [{
+        id: update.skuId,
+        price: {
+          amount: update.price,
+          currency: "USD",
+          sale_price: update.price
+        }
+      }]
+    }))
+  }
+  
+  const updateSign = generateSignature(updatePath, updateParams, updateBody, APP_SECRET)
+  const updateQueryParams = new URLSearchParams({
+    ...updateParams,
+    sign: updateSign,
+    access_token: accessToken
+  })
+  
+  const updateResponse = await fetch(`${baseUrl}${updatePath}?${updateQueryParams.toString()}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-TTS-Access-Token': accessToken
+    },
+    body: JSON.stringify(updateBody)
+  })
+  
+  return await updateResponse.json()
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { targetSize, newPrice } = await request.json()
@@ -167,8 +210,8 @@ export async function POST(request: NextRequest) {
     const products = await getProductList(accessToken, shopCipher)
     console.log('Total products found:', products.length)
 
-    // Filter SKUs with matching size
-    const updateQueue: Array<{ productId: string, skuId: string }> = []
+    // Filter SKUs with matching size and prepare updates
+    const updates: Array<{productId: string, skuId: string, price: string}> = []
     
     for (const product of products) {
       if (product.skus) {
@@ -178,52 +221,49 @@ export async function POST(request: NextRequest) {
           )
           
           if (sizeAttribute) {
-            updateQueue.push({
+            updates.push({
               productId: product.id,
-              skuId: sku.id
+              skuId: sku.id,
+              price: newPrice.toString()
             })
           }
         }
       }
     }
 
-    console.log('SKUs to update:', updateQueue.length)
+    console.log('SKUs to update:', updates.length)
 
-    // Process updates in batches
+    // Process updates in batches of 50 (TikTok's recommended batch size)
     const results = {
       success: 0,
       failed: 0,
       errors: [] as any[]
     }
 
-    for (let i = 0; i < updateQueue.length; i += BATCH_SIZE) {
-      const batch = updateQueue.slice(i, i + BATCH_SIZE)
-      
-      // Process batch with small delay to respect rate limits
-      await Promise.all(batch.map(async ({ productId, skuId }) => {
-        try {
-          const result = await updateProductPrice(accessToken, shopCipher, productId, skuId, newPrice.toString())
-          if (result.code === 0) {
-            results.success++
-          } else {
-            results.failed++
-            results.errors.push({ productId, skuId, error: result })
-          }
-        } catch (error) {
-          results.failed++
-          results.errors.push({ productId, skuId, error })
+    for (let i = 0; i < updates.length; i += 50) {
+      const batch = updates.slice(i, i + 50)
+      try {
+        const result = await batchUpdatePrices(accessToken, shopCipher, batch)
+        if (result.code === 0) {
+          results.success += batch.length
+        } else {
+          results.failed += batch.length
+          results.errors.push(result)
         }
-      }))
+      } catch (error) {
+        results.failed += batch.length
+        results.errors.push(error)
+      }
 
       // Add delay between batches
-      if (i + BATCH_SIZE < updateQueue.length) {
+      if (i + 50 < updates.length) {
         await new Promise(resolve => setTimeout(resolve, 1000))
       }
     }
 
     return NextResponse.json({
       success: true,
-      message: `Processed ${updateQueue.length} SKUs`,
+      message: `Processed ${updates.length} SKUs`,
       results
     })
     
