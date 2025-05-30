@@ -129,15 +129,18 @@ export async function POST(request: NextRequest) {
       name: product.title,
       status: product.status,
       skus: product.skus?.map((sku: any) => ({
-        id: sku.id,
-        seller_sku: sku.seller_sku,
+        id: sku.id || '',
+        seller_sku: sku.seller_sku || '',
+        title: sku.sales_attributes?.map((attr: any) => `${attr.name}: ${attr.value_name}`).join(', ') || sku.seller_sku,
         price: {
           original: sku.price?.original_price || '0',
           sale: sku.price?.sale_price || sku.price?.original_price || '0'
         },
         stock: sku.stock_infos?.[0]?.available_stock || 0
-      }))
+      })) || []
     })) || []
+
+    console.log('Formatted products:', JSON.stringify(formattedProducts, null, 2))
     
     return NextResponse.json({
       success: true,

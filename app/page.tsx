@@ -555,7 +555,7 @@ Page will reload to show authorized state.`)
               <p className="mt-2"><strong>ID:</strong> {product.id}</p>
               <p><strong>Status:</strong> {product.status}</p>
               
-              <h4 className="text-lg font-bold mt-4">Variants</h4>
+              <h4 className="text-lg font-bold mt-4">Variants ({product.skus?.length || 0})</h4>
               <div className="grid gap-4 mt-2">
                 {product.skus?.map((sku: any) => (
                   <ProductVariant 
