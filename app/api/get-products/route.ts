@@ -37,34 +37,52 @@ function generateSignature(path: string, params: Record<string, string>, body: a
 }
 
 async function getAuthorizedShop(accessToken: string) {
-  const baseUrl = 'https://open-api.tiktokglobalshop.com'
-  const shopsPath = '/authorization/202309/shops'
-  const shopsParams = {
-    app_key: APP_KEY,
-    timestamp: Math.floor(Date.now() / 1000).toString()
-  }
-  
-  const shopsSign = generateSignature(shopsPath, shopsParams, {}, APP_SECRET)
-  const shopsQueryParams = new URLSearchParams({
-    ...shopsParams,
-    sign: shopsSign,
-    access_token: accessToken
-  })
-  
-  const shopsResponse = await fetch(`${baseUrl}${shopsPath}?${shopsQueryParams.toString()}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      'X-TTS-Access-Token': accessToken
+  try {
+    const baseUrl = 'https://open-api.tiktokglobalshop.com'
+    const shopsPath = '/authorization/202309/shops'
+    const shopsParams = {
+      app_key: APP_KEY,
+      timestamp: Math.floor(Date.now() / 1000).toString()
     }
-  })
-  
-  const shopsData = await shopsResponse.json()
-  
-  if (!shopsData.data?.shops?.[0]?.cipher) {
-    throw new Error('Failed to get shop cipher')
+    
+    const requestBody = {}
+    const shopsSign = generateSignature(shopsPath, shopsParams, requestBody, APP_SECRET)
+    
+    console.log('Shop Authorization Request:')
+    console.log('- Path:', shopsPath)
+    console.log('- Params:', shopsParams)
+    console.log('- Sign:', shopsSign)
+    
+    const shopsQueryParams = new URLSearchParams({
+      ...shopsParams,
+      sign: shopsSign,
+      access_token: accessToken
+    })
+    
+    const shopsResponse = await fetch(`${baseUrl}${shopsPath}?${shopsQueryParams.toString()}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-TTS-Access-Token': accessToken
+      }
+    })
+    
+    const shopsData = await shopsResponse.json()
+    console.log('Shop Response:', JSON.stringify(shopsData, null, 2))
+    
+    if (shopsData.code !== 0) {
+      throw new Error(`Failed to get shop data: ${shopsData.message}`)
+    }
+    
+    if (!shopsData.data?.shops?.[0]?.cipher) {
+      throw new Error('No shop cipher found in response')
+    }
+    
+    return shopsData.data.shops[0].cipher
+  } catch (error) {
+    console.error('Shop Authorization Error:', error)
+    throw new Error(error instanceof Error ? error.message : 'Failed to get shop cipher')
   }
-  
-  return shopsData.data.shops[0].cipher
 }
 
 export async function GET(request: NextRequest) {
