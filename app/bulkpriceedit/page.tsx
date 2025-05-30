@@ -86,10 +86,10 @@ export default function BulkPriceEdit() {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          updates: skusToUpdate.map(sku => ({
-            product_id: sku.product_id,
-            sku_id: sku.sku_id,
-            price: formattedNewPrice
+          skusToUpdate: skusToUpdate.map(sku => ({
+            productId: sku.product_id,
+            skuId: sku.sku_id,
+            newPrice: formattedNewPrice
           }))
         })
       })
@@ -100,8 +100,17 @@ export default function BulkPriceEdit() {
         throw new Error(data.error || 'An error occurred during price update')
       }
 
-      // Refresh the search results
-      handleSearch(new Event('submit') as any)
+      // Show success message
+      setError('Prices updated successfully!')
+      
+      // Clear selections
+      setSelectedSkus(new Set())
+      setNewPrice('')
+
+      // Refresh the search results after a short delay
+      setTimeout(() => {
+        handleSearch(new Event('submit') as any)
+      }, 2000)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unexpected error occurred')
     } finally {
