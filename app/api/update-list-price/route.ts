@@ -101,10 +101,12 @@ export async function POST(request: NextRequest) {
 
     const updateBody = {
       product_id: productId,
+      description: "Price update via API",
       skus: [{
         id: skuId,
         sale_price: listPrice,
-        tax_exclusive_price: listPrice
+        tax_exclusive_price: listPrice,
+        original_price: listPrice
       }]
     }
     
@@ -117,6 +119,7 @@ export async function POST(request: NextRequest) {
     
     const updateUrl = `${baseUrl}${updatePath}?${updateQueryParams.toString()}`
     console.log('Update URL:', updateUrl)
+    console.log('Update Body:', JSON.stringify(updateBody, null, 2))
     
     const updateResponse = await fetch(updateUrl, {
       method: 'PUT',
