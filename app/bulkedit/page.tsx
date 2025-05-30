@@ -13,6 +13,10 @@ interface Product {
     id: string;
     seller_sku: string;
     title: string;
+    sales_attributes: Array<{
+      name: string;
+      value_name: string;
+    }>;
     price: {
       currency: string;
       original: string;
