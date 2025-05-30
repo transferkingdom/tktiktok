@@ -157,10 +157,6 @@ export async function POST(request: NextRequest) {
           amount: listPrice.toString(),
           currency: "USD",
           sale_price: listPrice.toString()
-        },
-        list_price: {
-          amount: listPrice.toString(),
-          currency: "USD"
         }
       }]
     }
@@ -177,7 +173,7 @@ export async function POST(request: NextRequest) {
     console.log('Update Body:', JSON.stringify(updateBody, null, 2))
     
     const updateResponse = await fetch(updateUrl, {
-      method: 'PUT',
+      method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-TTS-Access-Token': accessToken
