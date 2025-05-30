@@ -100,17 +100,21 @@ export default function ProductTable({ products, totalCount, nextPageToken, onUp
     return new Date(timestamp * 1000).toLocaleString();
   };
 
+  const getAttributeValue = (variant: Variant, name: string) => {
+    return variant.sales_attributes.find(attr => attr.name === name)?.value_name || '-';
+  };
+
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <h2>Products ({totalCount})</h2>
+        <h2>Ürünler ({totalCount})</h2>
         <div className={styles.actions}>
           <input
             type="number"
             step="0.01"
             value={newPrice}
             onChange={(e) => setNewPrice(e.target.value)}
-            placeholder="New price"
+            placeholder="Yeni fiyat"
             className={styles.priceInput}
           />
           <button 
@@ -118,7 +122,7 @@ export default function ProductTable({ products, totalCount, nextPageToken, onUp
             disabled={!newPrice || selectedVariants.size === 0}
             className={styles.updateButton}
           >
-            Update Prices
+            Fiyatları Güncelle ({selectedVariants.size})
           </button>
         </div>
       </div>
@@ -134,21 +138,20 @@ export default function ProductTable({ products, totalCount, nextPageToken, onUp
                   onChange={handleSelectAll}
                 />
               </th>
-              <th>Product Name</th>
-              <th>Status</th>
-              <th>Last Updated</th>
+              <th>Ürün Adı</th>
+              <th>Durum</th>
+              <th>Son Güncelleme</th>
               <th>SKU</th>
-              <th>Size</th>
-              <th>Color</th>
-              <th>Price</th>
-              <th>Stock</th>
+              <th>Özellikler</th>
+              <th>Fiyat</th>
+              <th>Stok</th>
             </tr>
           </thead>
           <tbody>
             {products.map(product => (
               product.variants.map((variant, variantIndex) => (
-                <tr key={variant.id}>
-                  <td>
+                <tr key={variant.id} className={variantIndex === 0 ? styles.firstVariant : ''}>
+                  <td className={styles.checkboxCell}>
                     <input
                       type="checkbox"
                       checked={selectedVariants.has(variant.id)}
@@ -164,10 +167,13 @@ export default function ProductTable({ products, totalCount, nextPageToken, onUp
                   )}
                   <td>{variant.seller_sku}</td>
                   <td>
-                    {variant.sales_attributes.find(attr => attr.name === 'PRINT Size')?.value_name || '-'}
-                  </td>
-                  <td>
-                    {variant.sales_attributes.find(attr => attr.name === 'Color')?.value_name || '-'}
+                    <ul className={styles.variantList}>
+                      {variant.sales_attributes.map(attr => (
+                        <li key={attr.name}>
+                          <strong>{attr.name}:</strong> {attr.value_name}
+                        </li>
+                      ))}
+                    </ul>
                   </td>
                   <td>{variant.price.currency} {variant.price.sale}</td>
                   <td>{variant.inventory}</td>
@@ -181,7 +187,7 @@ export default function ProductTable({ products, totalCount, nextPageToken, onUp
       {nextPageToken && (
         <div className={styles.loadMore}>
           <button onClick={() => onLoadMore(nextPageToken)}>
-            Load More
+            Daha Fazla Yükle
           </button>
         </div>
       )}

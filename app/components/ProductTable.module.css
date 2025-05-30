@@ -9,6 +9,12 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  position: sticky;
+  top: 0;
+  background: white;
+  z-index: 10;
+  padding: 20px;
+  border-bottom: 1px solid #eee;
 }
 
 .header h2 {
@@ -39,6 +45,7 @@
   border-radius: 4px;
   cursor: pointer;
   font-weight: 500;
+  min-width: 200px;
 }
 
 .updateButton:disabled {
@@ -92,19 +99,18 @@
   word-wrap: break-word;
 }
 
-.table td:nth-child(5), /* SKU */
-.table td:nth-child(6), /* Size */
-.table td:nth-child(7) { /* Color */
+.table td:nth-child(5) { /* SKU */
   white-space: nowrap;
   font-family: monospace;
 }
 
-.table td:nth-child(8) { /* Price */
+.table td:nth-child(7) { /* Price */
   text-align: right;
   font-weight: 500;
+  white-space: nowrap;
 }
 
-.table td:nth-child(9) { /* Stock */
+.table td:nth-child(8) { /* Stock */
   text-align: right;
   font-weight: 500;
   color: #28a745;
@@ -141,6 +147,12 @@
   padding: 4px 0;
   color: #666;
   font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.variantList li strong {
+  color: #333;
+  margin-right: 4px;
 }
 
 .loadMore {

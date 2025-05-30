@@ -27,10 +27,39 @@ function generateSignature(path: string, params: Record<string, string>, appSecr
   return crypto.createHmac('sha256', appSecret).update(signString).digest('hex')
 }
 
+interface SalesAttribute {
+  name: string;
+  value_name: string;
+}
+
+interface Variant {
+  id: string;
+  seller_sku: string;
+  title: string;
+  sales_attributes: SalesAttribute[];
+  price: {
+    currency: string;
+    original: string;
+    sale: string;
+  };
+  inventory: number;
+}
+
+interface Product {
+  id: string;
+  name: string;
+  status: string;
+  create_time: number;
+  update_time: number;
+  variants: Variant[];
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const pageToken = searchParams.get('page_token')
+    const attributeName = searchParams.get('attribute_name')
+    const attributeValue = searchParams.get('attribute_value')
     
     // Get access token from cookies
     const cookieStore = cookies()
@@ -117,36 +146,49 @@ export async function GET(request: NextRequest) {
       }, { status: 400 })
     }
 
-    // Format the response for frontend
-    const formattedResponse = {
-      success: true,
-      total_count: data.data?.total_count || 0,
-      next_page_token: data.data?.next_page_token,
-      products: data.data?.products?.map((product: any) => ({
-        id: product.id,
-        name: product.title,
-        status: product.status,
-        create_time: product.create_time,
-        update_time: product.update_time,
-        variants: product.skus?.map((sku: any) => ({
-          id: sku.id,
-          seller_sku: sku.seller_sku,
-          title: sku.seller_sku,
-          sales_attributes: sku.sales_attributes?.map((attr: any) => ({
-            name: attr.name,
-            value_name: attr.value_name
-          })) || [],
-          price: {
-            currency: sku.price?.currency || 'USD',
-            original: sku.price?.tax_exclusive_price || '0',
-            sale: sku.price?.sale_price || sku.price?.tax_exclusive_price || '0'
-          },
-          inventory: sku.inventory?.[0]?.quantity || 0
-        })) || []
+    // Format and filter the response for frontend
+    let formattedProducts = data.data?.products?.map((product: any) => ({
+      id: product.id,
+      name: product.title,
+      status: product.status,
+      create_time: product.create_time,
+      update_time: product.update_time,
+      variants: product.skus?.map((sku: any) => ({
+        id: sku.id,
+        seller_sku: sku.seller_sku,
+        title: sku.seller_sku,
+        sales_attributes: sku.sales_attributes?.map((attr: any) => ({
+          name: attr.name,
+          value_name: attr.value_name
+        })) || [],
+        price: {
+          currency: sku.price?.currency || 'USD',
+          original: sku.price?.tax_exclusive_price || '0',
+          sale: sku.price?.sale_price || sku.price?.tax_exclusive_price || '0'
+        },
+        inventory: sku.inventory?.[0]?.quantity || 0
       })) || []
+    })) || []
+
+    // Filter by sales attributes if specified
+    if (attributeName && attributeValue) {
+      formattedProducts = formattedProducts.map((product: Product) => ({
+        ...product,
+        variants: product.variants.filter((variant: Variant) => 
+          variant.sales_attributes.some((attr: SalesAttribute) => 
+            attr.name === attributeName && 
+            attr.value_name.toLowerCase().includes(attributeValue.toLowerCase())
+          )
+        )
+      })).filter((product: Product) => product.variants.length > 0)
     }
 
-    return NextResponse.json(formattedResponse)
+    return NextResponse.json({
+      success: true,
+      total_count: formattedProducts.length,
+      next_page_token: data.data?.next_page_token,
+      products: formattedProducts
+    })
     
   } catch (error) {
     console.error('❌ Get Products Error:', error)
