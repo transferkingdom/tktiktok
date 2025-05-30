@@ -5,7 +5,7 @@ import crypto from 'crypto'
 const APP_KEY = '6e8q3qfuc5iqv'
 const APP_SECRET = 'f1a1a446f377780021df9219cb4b029170626997'
 
-function generateSignature(path: string, params: Record<string, string>, appSecret: string) {
+function generateSignature(path: string, params: Record<string, string>, body: any, appSecret: string) {
   const sortedParams = Object.keys(params).sort().reduce((acc, key) => {
     acc[key] = params[key]
     return acc
@@ -17,6 +17,11 @@ function generateSignature(path: string, params: Record<string, string>, appSecr
       signString += key + value
     }
   }
+  
+  if (body) {
+    signString += JSON.stringify(body)
+  }
+  
   signString += appSecret
   
   return crypto.createHmac('sha256', appSecret).update(signString).digest('hex')
@@ -57,7 +62,7 @@ export async function POST(request: NextRequest) {
       timestamp: Math.floor(Date.now() / 1000).toString()
     }
     
-    const shopsSign = generateSignature(shopsPath, shopsParams, APP_SECRET)
+    const shopsSign = generateSignature(shopsPath, shopsParams, null, APP_SECRET)
     const shopsQueryParams = new URLSearchParams({
       ...shopsParams,
       sign: shopsSign,
@@ -87,11 +92,14 @@ export async function POST(request: NextRequest) {
     const productsParams = {
       app_key: APP_KEY,
       timestamp: Math.floor(Date.now() / 1000).toString(),
-      shop_cipher: shopCipher,
-      page_size: '40'
+      shop_cipher: shopCipher
+    }
+
+    const productsBody = {
+      page_size: 40
     }
     
-    const productsSign = generateSignature(productsPath, productsParams, APP_SECRET)
+    const productsSign = generateSignature(productsPath, productsParams, productsBody, APP_SECRET)
     const productsQueryParams = new URLSearchParams({
       ...productsParams,
       sign: productsSign,
@@ -99,11 +107,12 @@ export async function POST(request: NextRequest) {
     })
     
     const productsResponse = await fetch(`${baseUrl}${productsPath}?${productsQueryParams.toString()}`, {
-      method: 'GET',
+      method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-TTS-Access-Token': accessToken
-      }
+      },
+      body: JSON.stringify(productsBody)
     })
     
     const productsData = await productsResponse.json()
