@@ -27,6 +27,20 @@ function generateSignature(path: string, params: Record<string, string>, body: a
   return crypto.createHmac('sha256', appSecret).update(signString).digest('hex')
 }
 
+interface TiktokSku {
+  id: string;
+  seller_sku: string;
+  price?: {
+    tax_exclusive_price: string;
+  };
+}
+
+interface TiktokProduct {
+  id: string;
+  title?: string;
+  skus?: TiktokSku[];
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { searchPrice, pageToken } = await request.json()
@@ -137,78 +151,24 @@ export async function POST(request: NextRequest) {
       throw new Error(productsData.message || 'Failed to get products')
     }
 
-    // Process products from current page
-    for (const product of productsData.data.products) {
-      if (!product.skus) continue
-      
-      // Get product details if not available in search results
-      let productTitle = product.title
-      if (!productTitle) {
-        try {
-          const productDetailsPath = `/product/202309/products/${product.id}`
-          const productDetailsParams = {
-            app_key: APP_KEY,
-            timestamp: Math.floor(Date.now() / 1000).toString(),
-            shop_cipher: shopCipher
-          }
-          
-          const productDetailsSign = generateSignature(productDetailsPath, productDetailsParams, null, APP_SECRET)
-          const productDetailsQueryParams = new URLSearchParams({
-            ...productDetailsParams,
-            sign: productDetailsSign,
-            access_token: accessToken
-          })
-          
-          const productDetailsResponse = await fetch(`${baseUrl}${productDetailsPath}?${productDetailsQueryParams.toString()}`, {
-            headers: {
-              'Content-Type': 'application/json',
-              'X-TTS-Access-Token': accessToken
-            }
-          })
-          
-          const productDetails = await productDetailsResponse.json()
-          if (productDetails.code === 0 && productDetails.data?.title) {
-            productTitle = productDetails.data.title
-          }
-        } catch (error) {
-          console.error('Failed to get product details:', error)
-          productTitle = `Product ${product.id}`
-        }
-      }
-      
-      for (const sku of product.skus) {
-        if (!sku.price?.tax_exclusive_price) continue
-        
-        const skuPrice = Number(sku.price.tax_exclusive_price).toFixed(2)
-        const searchPriceFormatted = Number(searchPrice).toFixed(2)
-        
-        if (skuPrice === searchPriceFormatted) {
-          matchingSkus.push({
-            product_id: product.id,
-            sku_id: sku.id,
-            seller_sku: sku.seller_sku || '',
-            title: productTitle || `Product ${product.id}`,
-            price: skuPrice
-          })
-        }
-      }
-    }
+    // Format response for frontend
+    const formattedSkus = productsData.data.products.flatMap((product: TiktokProduct) => 
+      product.skus?.map((sku: TiktokSku) => ({
+        product_id: product.id,
+        sku_id: sku.id,
+        seller_sku: sku.seller_sku,
+        title: product.title || '',
+        price: sku.price?.tax_exclusive_price || '0'
+      })) || []
+    );
 
-    // Add delay between requests to avoid rate limits
-    if (productsData.data.next_page_token) {
-      await new Promise(resolve => setTimeout(resolve, 1000))
-    }
-
-    const response = {
+    return NextResponse.json({
       success: true,
-      skus: matchingSkus,
+      skus: formattedSkus,
       total: productsData.data.total_count || 0,
       hasNextPage: !!productsData.data.next_page_token,
       nextPageToken: productsData.data.next_page_token || null
-    }
-
-    console.log('Sending response:', JSON.stringify(response, null, 2))
-    return NextResponse.json(response)
+    });
     
   } catch (error) {
     console.error('❌ Search Products Error:', error)
