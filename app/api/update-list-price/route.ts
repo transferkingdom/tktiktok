@@ -124,6 +124,7 @@ export async function POST(request: NextRequest) {
     }
 
     const categoryId = productData.data?.category_chains?.[productData.data.category_chains.length - 1]?.id
+    const mainImages = productData.data?.images || []
 
     if (!categoryId) {
       return NextResponse.json({
@@ -145,6 +146,7 @@ export async function POST(request: NextRequest) {
       product_id: productId,
       description: "Price update via API",
       category_id: categoryId,
+      main_images: mainImages,
       skus: [{
         id: skuId,
         sale_price: listPrice,
