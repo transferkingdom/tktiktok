@@ -39,13 +39,15 @@ export default function Home() {
   const [refreshTokenLoading, setRefreshTokenLoading] = useState<boolean>(false)
   
   // Product management states
-  const [productId, setProductId] = useState<string>('1730973647867908687')
-  const [product, setProduct] = useState<Product | null>(null)
+  const [productId, setProductId] = useState<string>('')
+  const [product, setProduct] = useState<any>(null)
   const [productLoading, setProductLoading] = useState<boolean>(false)
   const [editingVariants, setEditingVariants] = useState<Record<string, string>>({})
   const [updatingPrices, setUpdatingPrices] = useState<Record<string, boolean>>({})
   const [error, setError] = useState<string | null>(null)
   const [details, setDetails] = useState<string | null>(null)
+
+  const [shops, setShops] = useState<any[]>([])
 
   useEffect(() => {
     // Check authorization status from server
@@ -339,52 +341,35 @@ Page will reload to show authorized state.`)
     }
   }
 
-  const handleGetProduct = async () => {
-    if (!productId.trim()) {
-      alert('Please enter a product ID')
-      return
-    }
-
-    setProductLoading(true)
-    setProduct(null)
-    
+  const searchProduct = async () => {
     try {
-      console.log('📦 Fetching product:', productId)
-      
-      const response = await fetch('/api/get-product', {
+      setLoading(true)
+      setError(null)
+      setProduct(null)
+
+      const response = await fetch('/api/search-products', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ productId: productId.trim() }),
+        body: JSON.stringify({ productId })
       })
-      
-      const result = await response.json()
-      
-      console.log('📦 Get product response:', result)
-      
-      if (response.ok && result.success) {
-        console.log('✅ Product fetched successfully!')
-        console.log('📋 Product details:', result.product)
-        
-        setProduct(result.product)
-        
-        // Initialize editing prices with current prices
-        const initialPrices: Record<string, string> = {}
-        result.product.variants.forEach((variant: ProductVariant) => {
-          initialPrices[variant.id] = variant.price.original
-        })
-        setEditingVariants(initialPrices)
-        
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to search product')
+      }
+
+      if (data.success && data.products?.[0]) {
+        setProduct(data.products[0])
       } else {
-        console.error('❌ Get product failed:', result)
-        alert(`Failed to get product: ${result.error}`)
+        setError('Product not found')
       }
     } catch (error) {
-      console.error('💥 Error fetching product:', error)
-      alert('Error fetching product')
+      setError(error instanceof Error ? error.message : 'Failed to search product')
     } finally {
-      setProductLoading(false)
+      setLoading(false)
     }
   }
 
@@ -467,6 +452,22 @@ Page will reload to show authorized state.`)
     setPriceRules(newRules)
   }
 
+  const getShops = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('/api/get-authorized-shops')
+      const data = await response.json()
+      
+      if (data.success && data.shops?.length > 0) {
+        setShops(data.shops)
+      }
+    } catch (error) {
+      console.error('Failed to get shops:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <main className="min-h-screen flex flex-col items-center justify-center p-4">
       <div className="max-w-2xl w-full space-y-8">
@@ -495,6 +496,78 @@ Page will reload to show authorized state.`)
           )}
 
           <TiktokAuthButton />
+        </div>
+
+        <div className="mt-8">
+          <h2 className="text-2xl font-bold mb-4">Authorized Shops</h2>
+          
+          <button 
+            onClick={getShops}
+            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+          >
+            Get Authorized Shops
+          </button>
+
+          {loading && <p className="mt-4">Loading shops...</p>}
+          
+          {shops.map((shop) => (
+            <div key={shop.id} className="mt-4 p-4 border rounded">
+              <p><strong>Shop Name:</strong> {shop.name}</p>
+              <p><strong>Shop ID:</strong> {shop.id}</p>
+              <p><strong>Shop Code:</strong> {shop.code}</p>
+              <p><strong>Region:</strong> {shop.region}</p>
+              <p><strong>Type:</strong> {shop.seller_type}</p>
+              <p><strong>Cipher:</strong> {shop.cipher}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-8">
+          <h2 className="text-2xl font-bold mb-4">Product Management</h2>
+          
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={productId}
+              onChange={(e) => setProductId(e.target.value)}
+              placeholder="Enter Product ID"
+              className="flex-1 p-2 border rounded"
+            />
+            <button
+              onClick={searchProduct}
+              disabled={loading || !productId}
+              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50"
+            >
+              {loading ? 'Searching...' : 'Get Product'}
+            </button>
+          </div>
+
+          {error && (
+            <div className="mt-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+              {error}
+            </div>
+          )}
+
+          {product && (
+            <div className="mt-4 p-4 border rounded">
+              <h3 className="text-xl font-bold">{product.name}</h3>
+              <p className="mt-2"><strong>ID:</strong> {product.id}</p>
+              <p><strong>Status:</strong> {product.status}</p>
+              
+              <h4 className="text-lg font-bold mt-4">Variants</h4>
+              <div className="grid gap-4 mt-2">
+                {product.skus?.map((sku: any) => (
+                  <div key={sku.id} className="p-3 border rounded">
+                    <p><strong>SKU ID:</strong> {sku.id}</p>
+                    <p><strong>Seller SKU:</strong> {sku.seller_sku}</p>
+                    <p><strong>Original Price:</strong> ${sku.price.original}</p>
+                    <p><strong>Sale Price:</strong> ${sku.price.sale}</p>
+                    <p><strong>Stock:</strong> {sku.stock}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </main>

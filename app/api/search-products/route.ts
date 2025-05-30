@@ -31,10 +31,10 @@ export async function POST(request: NextRequest) {
   try {
     const { productId } = await request.json()
     
-    console.log('=== Get Product API Start ===')
+    console.log('=== Search Products API Start ===')
     console.log('Product ID:', productId)
     
-    // Get access token and shop cipher from cookies
+    // Get access token from cookies
     const cookieStore = cookies()
     const shopAccessToken = cookieStore.get('tiktok_shop_access_token')?.value
     const legacyAccessToken = cookieStore.get('tiktok_access_token')?.value
@@ -81,77 +81,75 @@ export async function POST(request: NextRequest) {
     const shopCipher = shopsData.data.shops[0].cipher
     console.log('Shop cipher:', shopCipher)
 
-    // Now get the product details
-    const productPath = `/product/202309/products/${productId}`
-    const productParams = {
+    // Now search for the product
+    const searchPath = '/product/202502/products/search'
+    const searchParams = {
       app_key: APP_KEY,
       timestamp: Math.floor(Date.now() / 1000).toString(),
       shop_cipher: shopCipher,
-      need_variant: 'true'
+      page_size: '20'
     }
     
-    const productSign = generateSignature(productPath, productParams, APP_SECRET)
-    const productQueryParams = new URLSearchParams({
-      ...productParams,
-      sign: productSign,
+    const searchSign = generateSignature(searchPath, searchParams, APP_SECRET)
+    const searchQueryParams = new URLSearchParams({
+      ...searchParams,
+      sign: searchSign,
       access_token: accessToken
     })
     
-    const productUrl = `${baseUrl}${productPath}?${productQueryParams.toString()}`
-    console.log('Product URL:', productUrl)
+    const searchUrl = `${baseUrl}${searchPath}?${searchQueryParams.toString()}`
+    console.log('Search URL:', searchUrl)
     
-    const productResponse = await fetch(productUrl, {
+    const searchResponse = await fetch(searchUrl, {
+      method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-TTS-Access-Token': accessToken
-      }
+      },
+      body: JSON.stringify({
+        status: 'ACTIVATE',
+        sku_ids: [productId]
+      })
     })
     
-    const productData = await productResponse.json()
-    console.log('Product response:', JSON.stringify(productData, null, 2))
+    const searchData = await searchResponse.json()
+    console.log('Search response:', JSON.stringify(searchData, null, 2))
     
-    if (!productResponse.ok) {
+    if (!searchResponse.ok) {
       return NextResponse.json({
         success: false,
-        error: 'Failed to get product',
-        details: productData
-      }, { status: productResponse.status })
+        error: 'Failed to search products',
+        details: searchData
+      }, { status: searchResponse.status })
     }
     
-    // Format the product data for frontend
-    const formattedProduct = {
-      id: productData.data?.id || productId,
-      name: productData.data?.title || 'Unknown Product',
-      status: productData.data?.status || 'Unknown',
-      description: productData.data?.description || '',
-      variants: []
-    }
-    
-    // Format variants/SKUs
-    if (productData.data?.skus && Array.isArray(productData.data.skus)) {
-      formattedProduct.variants = productData.data.skus.map((sku: any) => ({
+    // Format the products data for frontend
+    const formattedProducts = searchData.data?.products?.map((product: any) => ({
+      id: product.id,
+      name: product.title,
+      status: product.status,
+      skus: product.skus?.map((sku: any) => ({
         id: sku.id,
         seller_sku: sku.seller_sku,
-        title: sku.sales_attributes?.map((attr: any) => `${attr.name}: ${attr.value_name}`).join(', ') || sku.seller_sku,
         price: {
           original: sku.price?.original_price || '0',
           sale: sku.price?.sale_price || sku.price?.original_price || '0'
         },
-        quantity: sku.stock_infos?.[0]?.available_stock || 0
+        stock: sku.stock_infos?.[0]?.available_stock || 0
       }))
-    }
+    })) || []
     
     return NextResponse.json({
       success: true,
-      product: formattedProduct,
-      raw_response: productData
+      products: formattedProducts,
+      raw_response: searchData
     })
     
   } catch (error) {
-    console.error('❌ Get Product Error:', error)
+    console.error('❌ Search Products Error:', error)
     return NextResponse.json(
       { 
-        error: 'Failed to get product', 
+        error: 'Failed to search products', 
         details: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }
