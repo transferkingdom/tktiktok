@@ -131,7 +131,7 @@ export async function GET(request: NextRequest) {
         variants: product.skus?.map((sku: any) => ({
           id: sku.id,
           seller_sku: sku.seller_sku,
-          title: sku.sales_attributes?.map((attr: any) => `${attr.name}: ${attr.value_name}`).join(', ') || sku.seller_sku,
+          title: sku.seller_sku,
           sales_attributes: sku.sales_attributes?.map((attr: any) => ({
             name: attr.name,
             value_name: attr.value_name
@@ -141,7 +141,7 @@ export async function GET(request: NextRequest) {
             original: sku.price?.tax_exclusive_price || '0',
             sale: sku.price?.sale_price || sku.price?.tax_exclusive_price || '0'
           },
-          inventory: sku.inventory?.[0]?.available_stock || 0
+          inventory: sku.inventory?.[0]?.quantity || 0
         })) || []
       })) || []
     }

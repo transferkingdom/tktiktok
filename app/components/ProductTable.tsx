@@ -35,187 +35,156 @@ interface ProductTableProps {
   totalCount: number;
   nextPageToken?: string;
   onUpdatePrices: (updates: Array<{productId: string, skuId: string, variantName: string, newPrice: string}>) => void;
-  onLoadMore: (pageToken: string) => Promise<void>;
+  onLoadMore: (pageToken: string) => void;
 }
 
-export default function ProductTable({ 
-  products, 
-  totalCount,
-  nextPageToken,
-  onUpdatePrices,
-  onLoadMore 
-}: ProductTableProps) {
-  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
-  const [targetVariant, setTargetVariant] = useState('');
+export default function ProductTable({ products, totalCount, nextPageToken, onUpdatePrices, onLoadMore }: ProductTableProps) {
+  const [selectedVariants, setSelectedVariants] = useState<Set<string>>(new Set());
   const [newPrice, setNewPrice] = useState('');
-  const [loading, setLoading] = useState(false);
-  
-  // Get variant value by attribute name
-  const getVariantValue = (variant: Variant, attributeName: string): string => {
-    return variant.sales_attributes?.find(attr => attr.name === attributeName)?.value_name || '';
-  };
+  const [selectAll, setSelectAll] = useState(false);
 
-  // Handle checkbox changes
-  const handleSelect = (productId: string, checked: boolean) => {
-    const newSelected = new Set(selectedItems);
-    if (checked) {
-      newSelected.add(productId);
+  const handleSelectAll = () => {
+    if (selectAll) {
+      setSelectedVariants(new Set());
     } else {
-      newSelected.delete(productId);
+      const allVariantIds = products.flatMap(product => 
+        product.variants.map(variant => variant.id)
+      );
+      setSelectedVariants(new Set(allVariantIds));
     }
-    setSelectedItems(newSelected);
+    setSelectAll(!selectAll);
   };
 
-  // Handle bulk update
-  const handleUpdate = () => {
-    if (!targetVariant || !newPrice) {
-      alert('Please enter variant name and new price');
-      return;
-    }
-
-    const updates: Array<{productId: string, skuId: string, variantName: string, newPrice: string}> = [];
-    
-    selectedItems.forEach(productId => {
-      const product = products.find(p => p.id === productId);
-      if (product) {
-        product.variants.forEach(variant => {
-          const valueName = getVariantValue(variant, 'PRINT Size');
-          if (valueName.includes(targetVariant)) {
-            updates.push({
-              productId: product.id,
-              skuId: variant.id,
-              variantName: variant.title,
-              newPrice: newPrice
-            });
-          }
-        });
+  const handleVariantSelect = (variantId: string) => {
+    const newSelected = new Set(selectedVariants);
+    if (newSelected.has(variantId)) {
+      newSelected.delete(variantId);
+      setSelectAll(false);
+    } else {
+      newSelected.add(variantId);
+      // Check if all variants are now selected
+      const allVariantIds = products.flatMap(product => 
+        product.variants.map(variant => variant.id)
+      );
+      if (allVariantIds.every(id => newSelected.has(id))) {
+        setSelectAll(true);
       }
+    }
+    setSelectedVariants(newSelected);
+  };
+
+  const handleUpdatePrices = () => {
+    if (!newPrice || selectedVariants.size === 0) return;
+
+    const updates = Array.from(selectedVariants).map(variantId => {
+      const product = products.find(p => 
+        p.variants.some(v => v.id === variantId)
+      );
+      const variant = product?.variants.find(v => v.id === variantId);
+      
+      return {
+        productId: product!.id,
+        skuId: variantId,
+        variantName: variant!.title,
+        newPrice: newPrice
+      };
     });
 
-    if (updates.length === 0) {
-      alert('No matching variants found in selected products');
-      return;
-    }
-
     onUpdatePrices(updates);
+    setNewPrice('');
+    setSelectedVariants(new Set());
+    setSelectAll(false);
   };
 
-  // Handle load more
-  const handleLoadMore = async () => {
-    if (!nextPageToken || loading) return;
-    
-    try {
-      setLoading(true);
-      await onLoadMore(nextPageToken);
-    } finally {
-      setLoading(false);
-    }
+  const formatDate = (timestamp: number) => {
+    return new Date(timestamp * 1000).toLocaleString();
   };
 
   return (
     <div className={styles.container}>
       <div className={styles.header}>
         <h2>Products ({totalCount})</h2>
+        <div className={styles.actions}>
+          <input
+            type="number"
+            step="0.01"
+            value={newPrice}
+            onChange={(e) => setNewPrice(e.target.value)}
+            placeholder="New price"
+            className={styles.priceInput}
+          />
+          <button 
+            onClick={handleUpdatePrices}
+            disabled={!newPrice || selectedVariants.size === 0}
+            className={styles.updateButton}
+          >
+            Update Prices
+          </button>
+        </div>
       </div>
 
-      <table className={styles.table}>
-        <thead>
-          <tr>
-            <th className={styles.checkboxCell}>
-              <input
-                type="checkbox"
-                onChange={(e) => {
-                  const checked = e.target.checked;
-                  if (checked) {
-                    setSelectedItems(new Set(products.map(p => p.id)));
-                  } else {
-                    setSelectedItems(new Set());
-                  }
-                }}
-                checked={selectedItems.size === products.length && products.length > 0}
-              />
-            </th>
-            <th>Product Name</th>
-            <th>Status</th>
-            <th>Last Updated</th>
-            <th>SKU</th>
-            <th>Size</th>
-            <th>Color</th>
-            <th>Price</th>
-            <th>Stock</th>
-          </tr>
-        </thead>
-        <tbody>
-          {products.map(product => (
-            product.variants.map((variant, variantIndex) => (
-              <tr key={`${product.id}-${variant.id}`} className={variantIndex === 0 ? styles.firstVariant : ''}>
-                {variantIndex === 0 && (
-                  <>
-                    <td className={styles.checkboxCell} rowSpan={product.variants.length}>
-                      <input
-                        type="checkbox"
-                        checked={selectedItems.has(product.id)}
-                        onChange={(e) => handleSelect(product.id, e.target.checked)}
-                      />
-                    </td>
-                    <td rowSpan={product.variants.length}>{product.name}</td>
-                    <td rowSpan={product.variants.length}>{product.status}</td>
-                    <td rowSpan={product.variants.length}>
-                      {new Date(product.update_time * 1000).toLocaleString()}
-                    </td>
-                  </>
-                )}
-                <td>{variant.seller_sku}</td>
-                <td>{getVariantValue(variant, 'PRINT Size')}</td>
-                <td>{getVariantValue(variant, 'Color')}</td>
-                <td>
-                  {variant.price.currency} {variant.price.sale}
-                </td>
-                <td>{variant.inventory}</td>
-              </tr>
-            ))
-          ))}
-        </tbody>
-      </table>
+      <div className={styles.tableWrapper}>
+        <table className={styles.table}>
+          <thead>
+            <tr>
+              <th>
+                <input
+                  type="checkbox"
+                  checked={selectAll}
+                  onChange={handleSelectAll}
+                />
+              </th>
+              <th>Product Name</th>
+              <th>Status</th>
+              <th>Last Updated</th>
+              <th>SKU</th>
+              <th>Size</th>
+              <th>Color</th>
+              <th>Price</th>
+              <th>Stock</th>
+            </tr>
+          </thead>
+          <tbody>
+            {products.map(product => (
+              product.variants.map((variant, variantIndex) => (
+                <tr key={variant.id}>
+                  <td>
+                    <input
+                      type="checkbox"
+                      checked={selectedVariants.has(variant.id)}
+                      onChange={() => handleVariantSelect(variant.id)}
+                    />
+                  </td>
+                  {variantIndex === 0 && (
+                    <>
+                      <td rowSpan={product.variants.length}>{product.name}</td>
+                      <td rowSpan={product.variants.length}>{product.status}</td>
+                      <td rowSpan={product.variants.length}>{formatDate(product.update_time)}</td>
+                    </>
+                  )}
+                  <td>{variant.seller_sku}</td>
+                  <td>
+                    {variant.sales_attributes.find(attr => attr.name === 'PRINT Size')?.value_name || '-'}
+                  </td>
+                  <td>
+                    {variant.sales_attributes.find(attr => attr.name === 'Color')?.value_name || '-'}
+                  </td>
+                  <td>{variant.price.currency} {variant.price.sale}</td>
+                  <td>{variant.inventory}</td>
+                </tr>
+              ))
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       {nextPageToken && (
         <div className={styles.loadMore}>
-          <button 
-            onClick={handleLoadMore}
-            disabled={loading}
-          >
-            {loading ? 'Loading...' : 'Load More'}
+          <button onClick={() => onLoadMore(nextPageToken)}>
+            Load More
           </button>
         </div>
       )}
-
-      <div className={styles.updateForm}>
-        <div>
-          <label>Size/Variant:</label>
-          <input
-            type="text"
-            value={targetVariant}
-            onChange={(e) => setTargetVariant(e.target.value)}
-            placeholder="Enter size or variant (e.g. S, M, L)"
-          />
-        </div>
-        <div>
-          <label>New Price:</label>
-          <input
-            type="number"
-            value={newPrice}
-            onChange={(e) => setNewPrice(e.target.value)}
-            placeholder="Enter new price"
-            step="0.01"
-          />
-        </div>
-        <button 
-          onClick={handleUpdate}
-          disabled={selectedItems.size === 0 || !targetVariant || !newPrice}
-        >
-          Update Selected Products ({selectedItems.size})
-        </button>
-      </div>
     </div>
   );
 } 
