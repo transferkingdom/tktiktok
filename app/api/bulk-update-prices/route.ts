@@ -64,12 +64,13 @@ async function getAuthorizedShop(accessToken: string) {
 
 async function getProductList(accessToken: string, shopCipher: string) {
   const baseUrl = 'https://open-api.tiktokglobalshop.com'
-  const productsPath = '/product/202309/products/search'
+  const productsPath = '/api/products/search'
   const productsParams = {
     app_key: APP_KEY,
     timestamp: Math.floor(Date.now() / 1000).toString(),
     shop_cipher: shopCipher,
-    page_size: '100' // Get maximum products per request
+    page_size: '100', // Get maximum products per request
+    page_number: '1'
   }
   
   const productsSign = generateSignature(productsPath, productsParams, null, APP_SECRET)
@@ -80,6 +81,7 @@ async function getProductList(accessToken: string, shopCipher: string) {
   })
   
   const productsResponse = await fetch(`${baseUrl}${productsPath}?${productsQueryParams.toString()}`, {
+    method: 'GET',
     headers: {
       'Content-Type': 'application/json',
       'X-TTS-Access-Token': accessToken
@@ -88,6 +90,12 @@ async function getProductList(accessToken: string, shopCipher: string) {
   
   const productsData = await productsResponse.json()
   console.log('Products Response:', JSON.stringify(productsData, null, 2))
+
+  if (productsData.code !== 0) {
+    console.error('Failed to get products:', productsData)
+    throw new Error(`Failed to get products: ${productsData.message}`)
+  }
+
   return productsData.data?.products || []
 }
 
