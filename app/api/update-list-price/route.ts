@@ -91,6 +91,48 @@ export async function POST(request: NextRequest) {
     const shopCipher = shopsData.data.shops[0].cipher
     console.log('Shop cipher:', shopCipher)
 
+    // Get product details to get category_id
+    const productPath = `/product/202309/products/${productId}`
+    const productParams = {
+      app_key: APP_KEY,
+      timestamp: Math.floor(Date.now() / 1000).toString(),
+      shop_cipher: shopCipher
+    }
+    
+    const productSign = generateSignature(productPath, productParams, null, APP_SECRET)
+    const productQueryParams = new URLSearchParams({
+      ...productParams,
+      sign: productSign,
+      access_token: accessToken
+    })
+    
+    const productResponse = await fetch(`${baseUrl}${productPath}?${productQueryParams.toString()}`, {
+      headers: {
+        'Content-Type': 'application/json',
+        'X-TTS-Access-Token': accessToken
+      }
+    })
+    
+    const productData = await productResponse.json()
+    
+    if (!productResponse.ok || productData.code !== 0) {
+      return NextResponse.json({
+        success: false,
+        error: 'Failed to get product details',
+        details: productData
+      }, { status: 400 })
+    }
+
+    const categoryId = productData.data?.category_chains?.[productData.data.category_chains.length - 1]?.id
+
+    if (!categoryId) {
+      return NextResponse.json({
+        success: false,
+        error: 'Failed to get category ID from product',
+        details: productData
+      }, { status: 400 })
+    }
+
     // Now update the product price
     const updatePath = '/product/202309/products/prices'
     const updateParams = {
@@ -102,6 +144,7 @@ export async function POST(request: NextRequest) {
     const updateBody = {
       product_id: productId,
       description: "Price update via API",
+      category_id: categoryId,
       skus: [{
         id: skuId,
         sale_price: listPrice,
