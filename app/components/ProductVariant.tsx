@@ -21,7 +21,7 @@ export default function ProductVariant({ sku, productId }: ProductVariantProps) 
 
   const handleUpdatePrice = async () => {
     if (!price || isNaN(Number(price)) || Number(price) <= 0) {
-      setError('Lütfen geçerli bir fiyat giriniz')
+      setError('Please enter a valid price')
       return
     }
 
@@ -44,16 +44,16 @@ export default function ProductVariant({ sku, productId }: ProductVariantProps) 
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.error || 'Fiyat güncellenirken bir hata oluştu')
+        throw new Error(data.error || 'Failed to update price')
       }
 
       // Update local state with new price
       sku.price.original = price
       sku.price.sale = price
       
-      alert('Fiyat başarıyla güncellendi!')
+      alert('Price updated successfully!')
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Fiyat güncellenirken bir hata oluştu')
+      setError(error instanceof Error ? error.message : 'Failed to update price')
     } finally {
       setUpdating(false)
     }
@@ -68,11 +68,11 @@ export default function ProductVariant({ sku, productId }: ProductVariantProps) 
         </div>
         <div className="text-right">
           <p className="text-sm">
-            <span className="text-gray-500">Mevcut Fiyat:</span>
+            <span className="text-gray-500">Current Price:</span>
             <span className="ml-2 font-medium text-gray-900">${sku.price.original}</span>
           </p>
           <p className="text-sm">
-            <span className="text-gray-500">Stok:</span>
+            <span className="text-gray-500">Stock:</span>
             <span className="ml-2 font-medium text-gray-900">{sku.stock}</span>
           </p>
         </div>
@@ -81,7 +81,7 @@ export default function ProductVariant({ sku, productId }: ProductVariantProps) 
       <div className="flex gap-4 items-end">
         <div className="flex-1">
           <label htmlFor={`price-${sku.id}`} className="block text-sm font-medium text-gray-700 mb-1">
-            Yeni Fiyat
+            New Price
           </label>
           <div className="relative rounded-md shadow-sm">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -116,7 +116,7 @@ export default function ProductVariant({ sku, productId }: ProductVariantProps) 
               : 'bg-blue-600 hover:bg-blue-700'
           } min-w-[100px] transition-colors`}
         >
-          {updating ? 'Güncelleniyor...' : 'Güncelle'}
+          {updating ? 'Updating...' : 'Update'}
         </button>
       </div>
     </div>

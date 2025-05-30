@@ -5,20 +5,28 @@ import crypto from 'crypto'
 const APP_KEY = '6e8q3qfuc5iqv'
 const APP_SECRET = 'f1a1a446f377780021df9219cb4b029170626997'
 
-function generateSignature(path: string, params: Record<string, string>, appSecret: string) {
+function generateSignature(path: string, params: Record<string, string>, body: any, appSecret: string) {
   // Sort parameters alphabetically
   const sortedParams = Object.keys(params).sort().reduce((acc, key) => {
     acc[key] = params[key]
     return acc
   }, {} as Record<string, string>)
 
-  // Build signature string: secret + path + key1value1key2value2 + secret
+  // Build signature string: secret + path + key1value1key2value2 + body + secret
   let signString = appSecret + path
+  
+  // Add query parameters
   for (const [key, value] of Object.entries(sortedParams)) {
     if (key !== 'sign' && key !== 'access_token') {
       signString += key + value
     }
   }
+  
+  // Add request body if exists
+  if (body) {
+    signString += JSON.stringify(body)
+  }
+  
   signString += appSecret
 
   console.log('Signature string:', signString)
@@ -57,7 +65,7 @@ export async function POST(request: NextRequest) {
       timestamp: Math.floor(Date.now() / 1000).toString()
     }
     
-    const shopsSign = generateSignature(shopsPath, shopsParams, APP_SECRET)
+    const shopsSign = generateSignature(shopsPath, shopsParams, null, APP_SECRET)
     const shopsQueryParams = new URLSearchParams({
       ...shopsParams,
       sign: shopsSign,
@@ -90,8 +98,17 @@ export async function POST(request: NextRequest) {
       timestamp: Math.floor(Date.now() / 1000).toString(),
       shop_cipher: shopCipher
     }
+
+    const updateBody = {
+      product_id: productId,
+      skus: [{
+        id: skuId,
+        sale_price: listPrice,
+        tax_exclusive_price: listPrice
+      }]
+    }
     
-    const updateSign = generateSignature(updatePath, updateParams, APP_SECRET)
+    const updateSign = generateSignature(updatePath, updateParams, updateBody, APP_SECRET)
     const updateQueryParams = new URLSearchParams({
       ...updateParams,
       sign: updateSign,
@@ -107,14 +124,7 @@ export async function POST(request: NextRequest) {
         'Content-Type': 'application/json',
         'X-TTS-Access-Token': accessToken
       },
-      body: JSON.stringify({
-        product_id: productId,
-        skus: [{
-          id: skuId,
-          sale_price: listPrice,
-          tax_exclusive_price: listPrice
-        }]
-      })
+      body: JSON.stringify(updateBody)
     })
     
     const updateData = await updateResponse.json()
