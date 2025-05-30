@@ -1,40 +1,49 @@
 import { useState } from 'react';
 import styles from './ProductTable.module.css';
 
+interface Price {
+  currency: string;
+  original: string;
+  sale: string;
+}
+
+interface Variant {
+  id: string;
+  seller_sku: string;
+  title: string;
+  price: Price;
+  inventory: number;
+}
+
 interface Product {
   id: string;
   name: string;
-  variants: Array<{
-    id: string;
-    seller_sku: string;
-    title: string;
-    price: {
-      original: string;
-      sale: string;
-    }
-  }>;
+  status: string;
+  create_time: number;
+  update_time: number;
+  variants: Variant[];
 }
 
 interface ProductTableProps {
   products: Product[];
+  totalCount: number;
+  nextPageToken?: string;
   onUpdatePrices: (updates: Array<{productId: string, skuId: string, variantName: string, newPrice: string}>) => void;
+  onLoadMore: (pageToken: string) => Promise<void>;
 }
 
-export default function ProductTable({ products, onUpdatePrices }: ProductTableProps) {
-  const [currentPage, setCurrentPage] = useState(1);
+export default function ProductTable({ 
+  products, 
+  totalCount,
+  nextPageToken,
+  onUpdatePrices,
+  onLoadMore 
+}: ProductTableProps) {
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [targetVariant, setTargetVariant] = useState('');
   const [newPrice, setNewPrice] = useState('');
+  const [loading, setLoading] = useState(false);
   
-  const itemsPerPage = 40;
-  const totalPages = Math.ceil(products.length / itemsPerPage);
-  
-  // Get current page items
-  const currentProducts = products.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
-
   // Handle checkbox changes
   const handleSelect = (productId: string, checked: boolean) => {
     const newSelected = new Set(selectedItems);
@@ -79,18 +88,36 @@ export default function ProductTable({ products, onUpdatePrices }: ProductTableP
     onUpdatePrices(updates);
   };
 
+  // Handle load more
+  const handleLoadMore = async () => {
+    if (!nextPageToken || loading) return;
+    
+    try {
+      setLoading(true);
+      await onLoadMore(nextPageToken);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className={styles.container}>
+      <div className={styles.header}>
+        <h2>Products ({totalCount})</h2>
+      </div>
+
       <table className={styles.table}>
         <thead>
           <tr>
             <th>Select</th>
             <th>Product Name</th>
+            <th>Status</th>
+            <th>Last Updated</th>
             <th>Variants</th>
           </tr>
         </thead>
         <tbody>
-          {currentProducts.map(product => (
+          {products.map(product => (
             <tr key={product.id}>
               <td>
                 <input
@@ -100,11 +127,14 @@ export default function ProductTable({ products, onUpdatePrices }: ProductTableP
                 />
               </td>
               <td>{product.name}</td>
+              <td>{product.status}</td>
+              <td>{new Date(product.update_time * 1000).toLocaleString()}</td>
               <td>
                 <ul className={styles.variantList}>
                   {product.variants.map(variant => (
                     <li key={variant.id}>
-                      {variant.title} - ${variant.price.sale}
+                      {variant.title} - {variant.price.currency} {variant.price.sale} 
+                      {variant.inventory !== undefined && ` (Stock: ${variant.inventory})`}
                     </li>
                   ))}
                 </ul>
@@ -114,23 +144,16 @@ export default function ProductTable({ products, onUpdatePrices }: ProductTableP
         </tbody>
       </table>
 
-      <div className={styles.pagination}>
-        <button
-          onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-          disabled={currentPage === 1}
-        >
-          Previous
-        </button>
-        <span>
-          Page {currentPage} / {totalPages}
-        </span>
-        <button
-          onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-          disabled={currentPage === totalPages}
-        >
-          Next
-        </button>
-      </div>
+      {nextPageToken && (
+        <div className={styles.loadMore}>
+          <button 
+            onClick={handleLoadMore}
+            disabled={loading}
+          >
+            {loading ? 'Loading...' : 'Load More'}
+          </button>
+        </div>
+      )}
 
       <div className={styles.updateForm}>
         <div>

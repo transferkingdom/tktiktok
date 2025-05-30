@@ -102,19 +102,35 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    // Get search parameters from URL
+    const searchParams = request.nextUrl.searchParams
+    const pageSize = searchParams.get('page_size') || '40'
+    const pageToken = searchParams.get('page_token')
+    const status = searchParams.get('status') || 'ALL'
+    const categoryVersion = searchParams.get('category_version') || 'v2' // US market uses v2
+
     const shopCipher = await getAuthorizedShop(accessToken)
     console.log('Shop cipher:', shopCipher)
 
-    const path = '/product/202309/products/search'
-    const params = {
+    const path = '/product/202502/products/search'
+    const params: Record<string, string> = {
       app_key: APP_KEY,
       timestamp: Math.floor(Date.now() / 1000).toString(),
       shop_cipher: shopCipher,
-      page_size: '100',
-      page_number: '1'
+      page_size: pageSize
     }
 
-    const body = {}
+    // Add optional page token if provided
+    if (pageToken) {
+      params.page_token = pageToken
+    }
+
+    // Prepare search body with filters
+    const body = {
+      status: status,
+      category_version: categoryVersion
+    }
+
     const sign = generateSignature(path, params, body, APP_SECRET)
     
     const queryParams = new URLSearchParams({
@@ -124,6 +140,10 @@ export async function GET(request: NextRequest) {
     })
     
     const url = `https://open-api.tiktokglobalshop.com${path}?${queryParams.toString()}`
+    
+    console.log('Search Request:')
+    console.log('URL:', url)
+    console.log('Body:', JSON.stringify(body, null, 2))
     
     const response = await fetch(url, {
       method: 'POST',
@@ -144,24 +164,32 @@ export async function GET(request: NextRequest) {
       }, { status: 400 })
     }
 
-    const formattedProducts = data.data?.products?.map((product: any) => ({
-      id: product.id,
-      name: product.title,
-      variants: product.skus?.map((sku: any) => ({
-        id: sku.id,
-        seller_sku: sku.seller_sku,
-        title: sku.sales_attributes?.map((attr: any) => `${attr.name}: ${attr.value_name}`).join(', ') || sku.seller_sku,
-        price: {
-          original: sku.price?.original_price || '0',
-          sale: sku.price?.sale_price || sku.price?.original_price || '0'
-        }
-      })) || []
-    })) || []
-
-    return NextResponse.json({
+    // Format the response for frontend
+    const formattedResponse = {
       success: true,
-      products: formattedProducts
-    })
+      total_count: data.data?.total_count || 0,
+      next_page_token: data.data?.next_page_token,
+      products: data.data?.products?.map((product: any) => ({
+        id: product.id,
+        name: product.title,
+        status: product.status,
+        create_time: product.create_time,
+        update_time: product.update_time,
+        variants: product.skus?.map((sku: any) => ({
+          id: sku.id,
+          seller_sku: sku.seller_sku,
+          title: sku.sales_attributes?.map((attr: any) => `${attr.name}: ${attr.value_name}`).join(', ') || sku.seller_sku,
+          price: {
+            currency: sku.price?.currency || 'USD',
+            original: sku.price?.tax_exclusive_price || '0',
+            sale: sku.price?.sale_price || sku.price?.tax_exclusive_price || '0'
+          },
+          inventory: sku.inventory?.[0]?.available_stock || 0
+        })) || []
+      })) || []
+    }
+
+    return NextResponse.json(formattedResponse)
     
   } catch (error) {
     console.error('❌ Get Products Error:', error)

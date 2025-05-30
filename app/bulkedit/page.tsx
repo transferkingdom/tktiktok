@@ -3,8 +3,29 @@
 import { useState, useEffect } from 'react'
 import ProductTable from '../components/ProductTable'
 
+interface Product {
+  id: string;
+  name: string;
+  status: string;
+  create_time: number;
+  update_time: number;
+  variants: Array<{
+    id: string;
+    seller_sku: string;
+    title: string;
+    price: {
+      currency: string;
+      original: string;
+      sale: string;
+    };
+    inventory: number;
+  }>;
+}
+
 export default function BulkEdit() {
-  const [products, setProducts] = useState([])
+  const [products, setProducts] = useState<Product[]>([])
+  const [totalCount, setTotalCount] = useState(0)
+  const [nextPageToken, setNextPageToken] = useState<string>()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [updateStatus, setUpdateStatus] = useState('')
@@ -13,13 +34,26 @@ export default function BulkEdit() {
     fetchProducts()
   }, [])
 
-  const fetchProducts = async () => {
+  const fetchProducts = async (pageToken?: string) => {
     try {
-      const response = await fetch('/api/get-products')
+      const url = new URL('/api/get-products', window.location.origin)
+      if (pageToken) {
+        url.searchParams.set('page_token', pageToken)
+      }
+      
+      const response = await fetch(url)
       const data = await response.json()
       
       if (data.success) {
-        setProducts(data.products)
+        if (pageToken) {
+          // Append new products to existing list
+          setProducts(prev => [...prev, ...data.products])
+        } else {
+          // Replace products list
+          setProducts(data.products)
+        }
+        setTotalCount(data.total_count)
+        setNextPageToken(data.next_page_token)
       } else {
         setError(data.error || 'Error loading products')
       }
@@ -29,6 +63,10 @@ export default function BulkEdit() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleLoadMore = async (pageToken: string) => {
+    await fetchProducts(pageToken)
   }
 
   const handleUpdatePrices = async (updates: Array<{productId: string, skuId: string, variantName: string, newPrice: string}>) => {
@@ -60,33 +98,34 @@ export default function BulkEdit() {
     }
   }
 
-  if (loading) {
+  if (loading && products.length === 0) {
     return <div>Loading...</div>
   }
 
-  if (error) {
+  if (error && products.length === 0) {
     return <div>Error: {error}</div>
   }
 
   return (
-    <div>
-      <h1>TikTok Shop Price Updater</h1>
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-2xl font-bold mb-6">TikTok Shop Price Updater</h1>
       
       {updateStatus && (
-        <div style={{ 
-          padding: '12px', 
-          margin: '12px 0', 
-          background: updateStatus.includes('Success') ? '#d4edda' : '#f8d7da',
-          border: '1px solid ' + (updateStatus.includes('Success') ? '#c3e6cb' : '#f5c6cb'),
-          borderRadius: '4px'
-        }}>
+        <div className={`p-4 mb-6 rounded-lg ${
+          updateStatus.includes('Success') 
+            ? 'bg-green-100 border border-green-400 text-green-700' 
+            : 'bg-red-100 border border-red-400 text-red-700'
+        }`}>
           {updateStatus}
         </div>
       )}
 
       <ProductTable 
-        products={products} 
+        products={products}
+        totalCount={totalCount}
+        nextPageToken={nextPageToken}
         onUpdatePrices={handleUpdatePrices}
+        onLoadMore={handleLoadMore}
       />
     </div>
   )
