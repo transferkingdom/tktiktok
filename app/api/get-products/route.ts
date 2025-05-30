@@ -6,31 +6,32 @@ const APP_KEY = '6e8q3qfuc5iqv'
 const APP_SECRET = 'f1a1a446f377780021df9219cb4b029170626997'
 
 function generateSignature(path: string, params: Record<string, string>, body: any, appSecret: string) {
-  // Sort parameters alphabetically
-  const sortedParams = Object.keys(params).sort().reduce((acc, key) => {
-    acc[key] = params[key]
-    return acc
-  }, {} as Record<string, string>)
+  // Sort parameters alphabetically, excluding 'sign' and 'access_token'
+  const filteredParams = Object.entries(params)
+    .filter(([key]) => key !== 'sign' && key !== 'access_token')
+    .sort(([a], [b]) => a.localeCompare(b))
+    .reduce((acc, [key, value]) => {
+      acc[key] = value
+      return acc
+    }, {} as Record<string, string>)
 
-  // Build signature string
-  let signString = path // Start with path, without appSecret prefix
-  
-  // Add sorted parameters
-  Object.entries(sortedParams).forEach(([key, value]) => {
-    if (key !== 'sign' && key !== 'access_token') {
-      signString += key + value
-    }
+  // Build signature string: appSecret + path + sorted params + body + appSecret
+  let signString = appSecret + path
+
+  // Add sorted parameters without their keys
+  Object.values(filteredParams).forEach(value => {
+    signString += value
   })
 
-  // Add request body if exists
-  if (body) {
+  // Add request body if exists and is not empty
+  if (body && Object.keys(body).length > 0) {
     signString += JSON.stringify(body)
   }
 
-  // Add app secret at the end
   signString += appSecret
 
   console.log('Raw signature string:', signString)
+  console.log('Filtered params:', filteredParams)
   
   // Generate HMAC SHA256
   return crypto.createHmac('sha256', appSecret).update(signString).digest('hex')
@@ -40,9 +41,11 @@ async function getAuthorizedShop(accessToken: string) {
   try {
     const baseUrl = 'https://open-api.tiktokglobalshop.com'
     const shopsPath = '/authorization/202309/shops'
+    const timestamp = Math.floor(Date.now() / 1000).toString()
+    
     const shopsParams = {
       app_key: APP_KEY,
-      timestamp: Math.floor(Date.now() / 1000).toString()
+      timestamp: timestamp
     }
     
     const requestBody = {}
@@ -52,6 +55,7 @@ async function getAuthorizedShop(accessToken: string) {
     console.log('- Path:', shopsPath)
     console.log('- Params:', shopsParams)
     console.log('- Sign:', shopsSign)
+    console.log('- Access Token:', accessToken.substring(0, 10) + '...')
     
     const shopsQueryParams = new URLSearchParams({
       ...shopsParams,
@@ -59,7 +63,10 @@ async function getAuthorizedShop(accessToken: string) {
       access_token: accessToken
     })
     
-    const shopsResponse = await fetch(`${baseUrl}${shopsPath}?${shopsQueryParams.toString()}`, {
+    const url = `${baseUrl}${shopsPath}?${shopsQueryParams.toString()}`
+    console.log('Full URL:', url)
+    
+    const shopsResponse = await fetch(url, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
