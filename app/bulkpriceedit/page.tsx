@@ -25,7 +25,7 @@ export default function BulkPriceEdit() {
   const [searching, setSearching] = useState(false)
   const [updating, setUpdating] = useState(false)
 
-  const handleSearch = async (e: React.FormEvent, page = 1) => {
+  const handleSearch = async (e: React.FormEvent, isLoadMore = false) => {
     e.preventDefault()
     
     if (!searchPrice) {
@@ -46,8 +46,7 @@ export default function BulkPriceEdit() {
         },
         body: JSON.stringify({
           searchPrice: formattedPrice,
-          page,
-          pageSize: 40
+          pageToken: isLoadMore ? nextPageToken : undefined
         })
       })
 
@@ -57,7 +56,7 @@ export default function BulkPriceEdit() {
         throw new Error(data.error || 'An error occurred during search')
       }
 
-      if (page === 1) {
+      if (!isLoadMore) {
         setSkus(data.skus)
       } else {
         setSkus(prev => [...prev, ...data.skus])
@@ -66,17 +65,18 @@ export default function BulkPriceEdit() {
       setTotalCount(data.total)
       setHasNextPage(data.hasNextPage)
       setNextPageToken(data.nextPageToken)
-      setCurrentPage(page)
+      setSelectedSkus(new Set()) // Clear selections on new search
     } catch (error) {
+      console.error('Search error:', error)
       setError(error instanceof Error ? error.message : 'Failed to search')
     } finally {
       setSearching(false)
     }
   }
 
-  const loadMore = () => {
+  const loadMore = (e: React.MouseEvent) => {
     if (!hasNextPage || searching) return
-    handleSearch(new Event('submit') as any, currentPage + 1)
+    handleSearch(e as any, true)
   }
 
   const handleUpdatePrices = async () => {

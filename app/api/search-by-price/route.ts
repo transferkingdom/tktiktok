@@ -29,7 +29,7 @@ function generateSignature(path: string, params: Record<string, string>, body: a
 
 export async function POST(request: NextRequest) {
   try {
-    const { searchPrice, page = 1, pageSize = 40 } = await request.json()
+    const { searchPrice, pageToken } = await request.json()
     
     if (!searchPrice) {
       return NextResponse.json(
@@ -59,6 +59,7 @@ export async function POST(request: NextRequest) {
       timestamp: Math.floor(Date.now() / 1000).toString()
     }
     
+    console.log('Getting shop cipher...')
     const shopsSign = generateSignature(shopsPath, shopsParams, null, APP_SECRET)
     const shopsQueryParams = new URLSearchParams({
       ...shopsParams,
@@ -74,6 +75,7 @@ export async function POST(request: NextRequest) {
     })
     
     const shopsData = await shopsResponse.json()
+    console.log('Shops response:', JSON.stringify(shopsData, null, 2))
     
     if (!shopsData.data?.shops?.[0]?.cipher) {
       return NextResponse.json(
@@ -83,6 +85,7 @@ export async function POST(request: NextRequest) {
     }
     
     const shopCipher = shopsData.data.shops[0].cipher
+    console.log('Shop cipher:', shopCipher)
 
     // Get products with pagination
     const productsPath = '/product/202309/products/search'
@@ -99,14 +102,18 @@ export async function POST(request: NextRequest) {
       app_key: APP_KEY,
       timestamp: Math.floor(Date.now() / 1000).toString(),
       shop_cipher: shopCipher,
-      page_size: '100',  // Maximum allowed by TikTok API
-      ...(page > 1 ? { page_token: page.toString() } : {})
+      page_size: '100'  // Maximum allowed by TikTok API
+    }
+
+    if (pageToken) {
+      productsParams.page_token = pageToken
     }
 
     const productsBody = {
       status: 'ACTIVATE'  // Only get active products
     }
     
+    console.log('Searching products with params:', productsParams)
     const productsSign = generateSignature(productsPath, productsParams, productsBody, APP_SECRET)
     const productsQueryParams = new URLSearchParams({
       ...productsParams,
@@ -123,25 +130,8 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify(productsBody)
     })
     
-    const productsData: {
-      code: number,
-      data: {
-        products: Array<{
-          id: string,
-          title: string,
-          skus: Array<{
-            id: string,
-            seller_sku: string,
-            price: {
-              tax_exclusive_price: string
-            }
-          }>
-        }>,
-        next_page_token?: string,
-        total_count: number
-      },
-      message: string
-    } = await productsResponse.json()
+    const productsData = await productsResponse.json()
+    console.log('Products response:', JSON.stringify(productsData, null, 2))
     
     if (!productsResponse.ok || productsData.code !== 0) {
       throw new Error(productsData.message || 'Failed to get products')
@@ -149,7 +139,11 @@ export async function POST(request: NextRequest) {
 
     // Process products from current page
     for (const product of productsData.data.products) {
+      if (!product.skus) continue
+      
       for (const sku of product.skus) {
+        if (!sku.price?.tax_exclusive_price) continue
+        
         const skuPrice = Number(sku.price.tax_exclusive_price).toFixed(2)
         const searchPriceFormatted = Number(searchPrice).toFixed(2)
         
@@ -158,7 +152,7 @@ export async function POST(request: NextRequest) {
             product_id: product.id,
             sku_id: sku.id,
             seller_sku: sku.seller_sku,
-            title: product.title,
+            title: product.title || 'Untitled Product',
             price: skuPrice
           })
         }
@@ -168,9 +162,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       skus: matchingSkus,
-      total: productsData.data.total_count,
-      page: page,
-      pageSize: pageSize,
+      total: productsData.data.total,
       hasNextPage: !!productsData.data.next_page_token,
       nextPageToken: productsData.data.next_page_token
     })
