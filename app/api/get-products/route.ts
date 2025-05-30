@@ -10,17 +10,13 @@ function generateSignature(path: string, params: Record<string, string>, body: a
   const filteredParams = Object.entries(params)
     .filter(([key]) => key !== 'sign' && key !== 'access_token')
     .sort(([a], [b]) => a.localeCompare(b))
-    .reduce((acc, [key, value]) => {
-      acc[key] = value
-      return acc
-    }, {} as Record<string, string>)
 
-  // Build signature string: appSecret + path + sorted params + body + appSecret
+  // Build signature string: appSecret + path + sorted params with keys + body + appSecret
   let signString = appSecret + path
 
-  // Add sorted parameters without their keys
-  Object.values(filteredParams).forEach(value => {
-    signString += value
+  // Add sorted parameters with their keys
+  filteredParams.forEach(([key, value]) => {
+    signString += key + value
   })
 
   // Add request body if exists and is not empty
@@ -31,7 +27,7 @@ function generateSignature(path: string, params: Record<string, string>, body: a
   signString += appSecret
 
   console.log('Raw signature string:', signString)
-  console.log('Filtered params:', filteredParams)
+  console.log('Filtered params:', Object.fromEntries(filteredParams))
   
   // Generate HMAC SHA256
   return crypto.createHmac('sha256', appSecret).update(signString).digest('hex')
@@ -45,7 +41,8 @@ async function getAuthorizedShop(accessToken: string) {
     
     const shopsParams = {
       app_key: APP_KEY,
-      timestamp: timestamp
+      timestamp: timestamp,
+      version: '202309'  // Adding API version as parameter
     }
     
     const requestBody = {}
@@ -70,9 +67,16 @@ async function getAuthorizedShop(accessToken: string) {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
-        'X-TTS-Access-Token': accessToken
+        'X-TTS-Access-Token': accessToken,
+        'User-Agent': 'TikTok Shop API Client'  // Adding User-Agent header
       }
     })
+    
+    if (!shopsResponse.ok) {
+      const errorText = await shopsResponse.text()
+      console.error('HTTP Error Response:', errorText)
+      throw new Error(`HTTP error! status: ${shopsResponse.status}`)
+    }
     
     const shopsData = await shopsResponse.json()
     console.log('Shop Response:', JSON.stringify(shopsData, null, 2))
