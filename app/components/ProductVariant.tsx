@@ -15,12 +15,20 @@ interface ProductVariantProps {
 }
 
 export default function ProductVariant({ sku, productId }: ProductVariantProps) {
-  const [listPrice, setListPrice] = useState(sku.price.original || '0')
+  const [price, setPrice] = useState(sku.price.original || '0')
   const [updating, setUpdating] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const handleUpdateListPrice = async () => {
+  const handleUpdatePrice = async () => {
+    if (!price || isNaN(Number(price)) || Number(price) <= 0) {
+      setError('Lütfen geçerli bir fiyat giriniz')
+      return
+    }
+
     try {
       setUpdating(true)
+      setError(null)
+      
       const response = await fetch('/api/update-list-price', {
         method: 'POST',
         headers: {
@@ -29,19 +37,23 @@ export default function ProductVariant({ sku, productId }: ProductVariantProps) 
         body: JSON.stringify({
           productId,
           skuId: sku.id,
-          listPrice
+          listPrice: price
         })
       })
 
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to update list price')
+        throw new Error(data.error || 'Fiyat güncellenirken bir hata oluştu')
       }
 
-      alert('List price updated successfully!')
+      // Update local state with new price
+      sku.price.original = price
+      sku.price.sale = price
+      
+      alert('Fiyat başarıyla güncellendi!')
     } catch (error) {
-      alert(error instanceof Error ? error.message : 'Failed to update list price')
+      setError(error instanceof Error ? error.message : 'Fiyat güncellenirken bir hata oluştu')
     } finally {
       setUpdating(false)
     }
@@ -56,15 +68,15 @@ export default function ProductVariant({ sku, productId }: ProductVariantProps) 
           <p className="text-sm text-gray-500">ID: {sku.id}</p>
         </div>
         <div className="text-right">
-          <p className="text-sm text-gray-500">Current Price: <span className="font-medium text-gray-900">${sku.price.original}</span></p>
-          <p className="text-sm text-gray-500">Sale Price: <span className="font-medium text-gray-900">${sku.price.sale}</span></p>
-          <p className="text-sm text-gray-500">Stock: <span className="font-medium text-gray-900">{sku.stock}</span></p>
+          <p className="text-sm text-gray-500">Mevcut Fiyat: <span className="font-medium text-gray-900">${sku.price.original}</span></p>
+          <p className="text-sm text-gray-500">İndirimli Fiyat: <span className="font-medium text-gray-900">${sku.price.sale}</span></p>
+          <p className="text-sm text-gray-500">Stok: <span className="font-medium text-gray-900">{sku.stock}</span></p>
         </div>
       </div>
       
       <div className="mt-4 flex gap-3 items-end">
         <div className="flex-1">
-          <label className="block text-sm font-medium text-gray-700 mb-1">List Price</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Yeni Fiyat</label>
           <div className="relative rounded-md shadow-sm">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <span className="text-gray-500 sm:text-sm">$</span>
@@ -73,19 +85,25 @@ export default function ProductVariant({ sku, productId }: ProductVariantProps) 
               type="number"
               min="0"
               step="0.01"
-              value={listPrice}
-              onChange={(e) => setListPrice(e.target.value)}
+              value={price}
+              onChange={(e) => {
+                setPrice(e.target.value)
+                setError(null)
+              }}
               className="focus:ring-blue-500 focus:border-blue-500 block w-full pl-7 pr-12 py-2 sm:text-sm border-gray-300 rounded-md"
               placeholder="0.00"
             />
           </div>
+          {error && (
+            <p className="mt-1 text-sm text-red-600">{error}</p>
+          )}
         </div>
         <button
-          onClick={handleUpdateListPrice}
-          disabled={updating || listPrice === sku.price.original}
+          onClick={handleUpdatePrice}
+          disabled={updating || price === sku.price.original}
           className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed min-w-[100px]"
         >
-          {updating ? 'Saving...' : 'Save'}
+          {updating ? 'Kaydediliyor...' : 'Kaydet'}
         </button>
       </div>
     </div>

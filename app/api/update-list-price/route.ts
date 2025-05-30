@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
     console.log('=== Update List Price API Start ===')
     console.log('Product ID:', productId)
     console.log('SKU ID:', skuId)
-    console.log('List Price:', listPrice)
+    console.log('New List Price:', listPrice)
     
     // Get access token from cookies
     const cookieStore = cookies()
@@ -83,8 +83,8 @@ export async function POST(request: NextRequest) {
     const shopCipher = shopsData.data.shops[0].cipher
     console.log('Shop cipher:', shopCipher)
 
-    // Now update the product list price
-    const updatePath = `/product/202309/products/${productId}/partial_edit`
+    // Now update the product price
+    const updatePath = '/product/202309/products/prices'
     const updateParams = {
       app_key: APP_KEY,
       timestamp: Math.floor(Date.now() / 1000).toString(),
@@ -102,18 +102,17 @@ export async function POST(request: NextRequest) {
     console.log('Update URL:', updateUrl)
     
     const updateResponse = await fetch(updateUrl, {
-      method: 'POST',
+      method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
         'X-TTS-Access-Token': accessToken
       },
       body: JSON.stringify({
+        product_id: productId,
         skus: [{
           id: skuId,
-          list_price: {
-            amount: listPrice,
-            currency: 'USD'
-          }
+          original_price: listPrice,
+          sale_price: listPrice
         }]
       })
     })
@@ -124,14 +123,14 @@ export async function POST(request: NextRequest) {
     if (!updateResponse.ok) {
       return NextResponse.json({
         success: false,
-        error: 'Failed to update list price',
+        error: 'Failed to update price',
         details: updateData
       }, { status: updateResponse.status })
     }
     
     return NextResponse.json({
       success: true,
-      message: 'List price updated successfully'
+      data: updateData
     })
     
   } catch (error) {
