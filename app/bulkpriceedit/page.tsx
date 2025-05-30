@@ -19,8 +19,11 @@ export default function BulkPriceEdit() {
   const [skus, setSkus] = useState<Sku[]>([])
   const [selectedSkus, setSelectedSkus] = useState<Set<string>>(new Set())
   const [currentPage, setCurrentPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
-  const itemsPerPage = 40
+  const [totalCount, setTotalCount] = useState(0)
+  const [hasNextPage, setHasNextPage] = useState(false)
+  const [nextPageToken, setNextPageToken] = useState<string | null>(null)
+  const [searching, setSearching] = useState(false)
+  const [updating, setUpdating] = useState(false)
 
   const handleSearch = async (e: React.FormEvent, page = 1) => {
     e.preventDefault()
@@ -31,7 +34,7 @@ export default function BulkPriceEdit() {
     }
 
     setError('')
-    setLoading(true)
+    setSearching(true)
 
     try {
       const formattedPrice = Number(searchPrice).toFixed(2)
@@ -41,10 +44,10 @@ export default function BulkPriceEdit() {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           searchPrice: formattedPrice,
-          page: page,
-          pageSize: itemsPerPage
+          page,
+          pageSize: 40
         })
       })
 
@@ -54,26 +57,33 @@ export default function BulkPriceEdit() {
         throw new Error(data.error || 'An error occurred during search')
       }
 
-      if (data.skus.length === 0) {
-        setError(`No SKUs found with price $${formattedPrice}`)
+      if (page === 1) {
+        setSkus(data.skus)
+      } else {
+        setSkus(prev => [...prev, ...data.skus])
       }
-
-      setSkus(data.skus)
+      
+      setTotalCount(data.total)
+      setHasNextPage(data.hasNextPage)
+      setNextPageToken(data.nextPageToken)
       setCurrentPage(page)
-      setTotalPages(Math.ceil(data.total / itemsPerPage))
-      setSelectedSkus(new Set())
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An unexpected error occurred')
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to search')
     } finally {
-      setLoading(false)
+      setSearching(false)
     }
+  }
+
+  const loadMore = () => {
+    if (!hasNextPage || searching) return
+    handleSearch(new Event('submit') as any, currentPage + 1)
   }
 
   const handleUpdatePrices = async () => {
     if (!newPrice || selectedSkus.size === 0) return
 
     setError('')
-    setLoading(true)
+    setUpdating(true)
 
     try {
       // Format the new price to 2 decimal places
@@ -114,19 +124,19 @@ export default function BulkPriceEdit() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unexpected error occurred')
     } finally {
-      setLoading(false)
+      setUpdating(false)
     }
   }
 
-  const toggleSelectAll = (checked: boolean) => {
-    if (checked) {
+  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
       setSelectedSkus(new Set(skus.map(sku => sku.sku_id)))
     } else {
       setSelectedSkus(new Set())
     }
   }
 
-  const toggleSelectSku = (skuId: string) => {
+  const handleSelectSku = (skuId: string) => {
     const newSelected = new Set(selectedSkus)
     if (newSelected.has(skuId)) {
       newSelected.delete(skuId)
@@ -155,8 +165,8 @@ export default function BulkPriceEdit() {
                 min="0"
                 required
               />
-              <button type="submit" className={styles.button} disabled={loading || !searchPrice}>
-                {loading ? 'Searching...' : 'Search'}
+              <button type="submit" className={styles.button} disabled={searching}>
+                {searching ? 'Searching...' : 'Search'}
               </button>
             </div>
           </div>
@@ -178,9 +188,9 @@ export default function BulkPriceEdit() {
               <button 
                 onClick={handleUpdatePrices} 
                 className={styles.button} 
-                disabled={loading || selectedSkus.size === 0 || !newPrice}
+                disabled={updating || selectedSkus.size === 0 || !newPrice}
               >
-                {loading ? 'Updating...' : 'Update Prices'}
+                {updating ? 'Updating...' : 'Update Prices'}
               </button>
             </div>
           </div>
@@ -197,7 +207,7 @@ export default function BulkPriceEdit() {
                 <input 
                   type="checkbox"
                   checked={selectedSkus.size === skus.length && skus.length > 0}
-                  onChange={(e) => toggleSelectAll(e.target.checked)}
+                  onChange={handleSelectAll}
                 />
               </th>
               <th>Product Name</th>
@@ -212,7 +222,7 @@ export default function BulkPriceEdit() {
                   <input 
                     type="checkbox"
                     checked={selectedSkus.has(sku.sku_id)}
-                    onChange={() => toggleSelectSku(sku.sku_id)}
+                    onChange={() => handleSelectSku(sku.sku_id)}
                   />
                 </td>
                 <td>{sku.product_name}</td>
@@ -223,38 +233,17 @@ export default function BulkPriceEdit() {
           </tbody>
         </table>
 
-        {totalPages > 1 && (
-          <div className={styles.pagination}>
-            {currentPage > 1 && (
-              <button
-                onClick={(e) => handleSearch(e, currentPage - 1)}
-                className={styles.pageButton}
-                disabled={loading}
-              >
-                Previous
-              </button>
-            )}
-            
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-              <button
-                key={page}
-                onClick={(e) => handleSearch(e, page)}
-                className={`${styles.pageButton} ${page === currentPage ? styles.activePage : ''}`}
-                disabled={loading}
-              >
-                {page}
-              </button>
-            ))}
+        {hasNextPage && (
+          <div className={styles.loadMore}>
+            <button onClick={loadMore} disabled={searching}>
+              {searching ? 'Loading...' : 'Load More'}
+            </button>
+          </div>
+        )}
 
-            {currentPage < totalPages && (
-              <button
-                onClick={(e) => handleSearch(e, currentPage + 1)}
-                className={styles.pageButton}
-                disabled={loading}
-              >
-                Next
-              </button>
-            )}
+        {totalCount > 0 && (
+          <div className={styles.summary}>
+            Found {totalCount} total SKUs with price ${searchPrice}
           </div>
         )}
       </div>
