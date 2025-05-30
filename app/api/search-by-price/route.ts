@@ -152,22 +152,25 @@ export async function POST(request: NextRequest) {
     }
 
     // Format response for frontend
-    const searchPriceNumber = Number(searchPrice).toFixed(2);
+    const searchPriceFloat = parseFloat(searchPrice);
     const formattedSkus = productsData.data.products.flatMap((product: TiktokProduct) => 
       product.skus?.map((sku: TiktokSku) => {
-        const skuPrice = Number(sku.price?.tax_exclusive_price || 0).toFixed(2);
-        if (skuPrice === searchPriceNumber) {
+        const skuPrice = parseFloat(sku.price?.tax_exclusive_price || '0');
+        // Compare with a small epsilon to handle floating point precision
+        if (Math.abs(skuPrice - searchPriceFloat) < 0.01) {
           return {
             product_id: product.id,
             sku_id: sku.id,
             seller_sku: sku.seller_sku,
             title: product.title || '',
-            price: skuPrice
+            price: sku.price?.tax_exclusive_price || '0'
           };
         }
         return null;
       }).filter(Boolean) || []
     );
+
+    console.log(`Found ${formattedSkus.length} SKUs with price ${searchPriceFloat}`);
 
     return NextResponse.json({
       success: true,
