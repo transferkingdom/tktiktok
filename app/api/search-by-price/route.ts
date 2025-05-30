@@ -38,9 +38,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Convert search price to string with 2 decimal places for consistent comparison
-    const normalizedSearchPrice = Number(searchPrice).toFixed(2)
-    
     // Get access token from cookies
     const cookieStore = cookies()
     const shopAccessToken = cookieStore.get('tiktok_shop_access_token')?.value
@@ -130,43 +127,37 @@ export async function POST(request: NextRequest) {
 
     // Filter products by price
     const matchingSkus = []
-    let totalMatchingSkus = 0
     
     for (const product of productsData.data.products) {
-      if (product.skus) {
-        for (const sku of product.skus) {
-          // Convert SKU price to string with 2 decimal places for consistent comparison
-          const skuPrice = Number(sku.price?.tax_exclusive_price).toFixed(2)
-          
-          if (skuPrice === normalizedSearchPrice) {
-            totalMatchingSkus++
-            
-            // Only add SKUs for the current page
-            const startIndex = (page - 1) * pageSize
-            const endIndex = startIndex + pageSize
-            
-            if (totalMatchingSkus > startIndex && totalMatchingSkus <= endIndex) {
-              matchingSkus.push({
-                product_id: product.id,
-                product_name: product.title,
-                sku_id: sku.id,
-                seller_sku: sku.seller_sku,
-                price: sku.price.tax_exclusive_price
-              })
-            }
-          }
+      for (const sku of product.skus) {
+        const skuPrice = Number(sku.price.tax_exclusive_price).toFixed(2)
+        const searchPriceFormatted = Number(searchPrice).toFixed(2)
+        
+        if (skuPrice === searchPriceFormatted) {
+          matchingSkus.push({
+            product_id: product.id,
+            sku_id: sku.id,
+            seller_sku: sku.seller_sku,
+            title: product.title,
+            price: skuPrice
+          })
         }
       }
     }
 
-    console.log(`Found ${totalMatchingSkus} matching SKUs for price ${normalizedSearchPrice}`)
-    
+    // Add pagination info
+    const totalPages = Math.ceil(matchingSkus.length / pageSize)
+    const start = (page - 1) * pageSize
+    const end = start + pageSize
+    const paginatedSkus = matchingSkus.slice(start, end)
+
     return NextResponse.json({
       success: true,
-      skus: matchingSkus,
-      total: totalMatchingSkus,
+      skus: paginatedSkus,
+      total: matchingSkus.length,
       page: page,
-      pageSize: pageSize
+      pageSize: pageSize,
+      totalPages: totalPages
     })
     
   } catch (error) {
