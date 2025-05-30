@@ -49,7 +49,7 @@ export default function ProductTable({ products, onUpdatePrices }: ProductTableP
   // Handle bulk update
   const handleUpdate = () => {
     if (!targetVariant || !newPrice) {
-      alert('Lütfen variant adı ve yeni fiyat değerini girin');
+      alert('Please enter variant name and new price');
       return;
     }
 
@@ -72,7 +72,7 @@ export default function ProductTable({ products, onUpdatePrices }: ProductTableP
     });
 
     if (updates.length === 0) {
-      alert('Seçili ürünlerde belirtilen variant bulunamadı');
+      alert('No matching variants found in selected products');
       return;
     }
 
@@ -84,9 +84,9 @@ export default function ProductTable({ products, onUpdatePrices }: ProductTableP
       <table className={styles.table}>
         <thead>
           <tr>
-            <th>Seç</th>
-            <th>Ürün Adı</th>
-            <th>Variantlar</th>
+            <th>Select</th>
+            <th>Product Name</th>
+            <th>Variants</th>
           </tr>
         </thead>
         <tbody>
@@ -119,36 +119,36 @@ export default function ProductTable({ products, onUpdatePrices }: ProductTableP
           onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
           disabled={currentPage === 1}
         >
-          Önceki
+          Previous
         </button>
         <span>
-          Sayfa {currentPage} / {totalPages}
+          Page {currentPage} / {totalPages}
         </span>
         <button
           onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
           disabled={currentPage === totalPages}
         >
-          Sonraki
+          Next
         </button>
       </div>
 
       <div className={styles.updateForm}>
         <div>
-          <label>Variant Adı:</label>
+          <label>Variant Name:</label>
           <input
             type="text"
             value={targetVariant}
             onChange={(e) => setTargetVariant(e.target.value)}
-            placeholder="Örn: Unisex - S & M ( 10\" )"
+            placeholder={'Example: Unisex - S & M ( 10" )'}
           />
         </div>
         <div>
-          <label>Yeni Fiyat:</label>
+          <label>New Price:</label>
           <input
             type="number"
             value={newPrice}
             onChange={(e) => setNewPrice(e.target.value)}
-            placeholder="Örn: 8.00"
+            placeholder="Example: 8.00"
             step="0.01"
           />
         </div>
@@ -156,7 +156,7 @@ export default function ProductTable({ products, onUpdatePrices }: ProductTableP
           onClick={handleUpdate}
           disabled={selectedItems.size === 0 || !targetVariant || !newPrice}
         >
-          Seçili Ürünleri Güncelle ({selectedItems.size})
+          Update Selected Products ({selectedItems.size})
         </button>
       </div>
     </div>
