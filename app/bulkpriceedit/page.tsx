@@ -148,100 +148,96 @@ export default function BulkPriceEdit() {
 
   return (
     <div className={styles.container}>
-      <h1 className={styles.title}>Bulk Price Update</h1>
+      <h1 className={styles.title}>TikTok Shop Price Updater</h1>
       
-      <div className={styles.actions}>
+      <div className={styles.section}>
+        <h2 className={styles.subtitle}>Bulk Price Update</h2>
+        
         <form onSubmit={handleSearch} className={styles.searchForm}>
-          <div className={styles.formGroup}>
+          <div className={styles.inputGroup}>
             <label className={styles.label}>Search Price:</label>
-            <div className={styles.inputGroup}>
-              <input 
-                type="number" 
-                step="0.01"
-                value={searchPrice}
-                onChange={(e) => setSearchPrice(e.target.value)}
-                placeholder="e.g. 3.50"
-                className={styles.input}
-                min="0"
-                required
-              />
-              <button type="submit" className={styles.button} disabled={searching}>
-                {searching ? 'Searching...' : 'Search'}
-              </button>
-            </div>
+            <input
+              type="number"
+              step="0.01"
+              value={searchPrice}
+              onChange={(e) => setSearchPrice(e.target.value)}
+              placeholder="e.g. 3.50"
+              className={styles.input}
+              min="0"
+              required
+            />
+            <button type="submit" className={styles.button} disabled={searching}>
+              {searching ? 'Searching...' : 'Search'}
+            </button>
           </div>
         </form>
 
-        <div className={styles.updateForm}>
-          <div className={styles.formGroup}>
-            <label className={styles.label}>New Price for Selected SKUs:</label>
-            <div className={styles.inputGroup}>
-              <input 
-                type="number"
-                step="0.01"
-                value={newPrice}
-                onChange={(e) => setNewPrice(e.target.value)}
-                placeholder="New price"
-                className={styles.input}
-                min="0"
-              />
-              <button 
-                onClick={handleUpdatePrices} 
-                className={styles.button} 
-                disabled={updating || selectedSkus.size === 0 || !newPrice}
-              >
-                {updating ? 'Updating...' : 'Update Prices'}
-              </button>
-            </div>
-          </div>
+        <div className={styles.inputGroup}>
+          <label className={styles.label}>New Price for Selected SKUs:</label>
+          <input
+            type="number"
+            step="0.01"
+            value={newPrice}
+            onChange={(e) => setNewPrice(e.target.value)}
+            placeholder="New price"
+            className={styles.input}
+            min="0"
+          />
+          <button 
+            onClick={handleUpdatePrices} 
+            className={styles.button}
+            disabled={updating || selectedSkus.size === 0 || !newPrice}
+          >
+            {updating ? 'Updating...' : 'Update Prices'}
+          </button>
         </div>
-      </div>
 
-      {error && <div className={styles.error}>{error}</div>}
+        {error && <div className={styles.error}>{error}</div>}
 
-      <div className={styles.results}>
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th>
-                <input 
-                  type="checkbox"
-                  checked={selectedSkus.size === skus.length && skus.length > 0}
-                  onChange={handleSelectAll}
-                />
-              </th>
-              <th>Product Name</th>
-              <th>SKU</th>
-              <th>Current Price</th>
-            </tr>
-          </thead>
-          <tbody>
-            {skus.map(sku => (
-              <tr key={sku.sku_id}>
-                <td>
-                  <input 
+        <div className={styles.tableContainer}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>
+                  <input
                     type="checkbox"
-                    checked={selectedSkus.has(sku.sku_id)}
-                    onChange={() => handleSelectSku(sku.sku_id)}
+                    onChange={handleSelectAll}
+                    checked={skus.length > 0 && selectedSkus.size === skus.length}
                   />
-                </td>
-                <td>{sku.product_name}</td>
-                <td>{sku.seller_sku}</td>
-                <td>${Number(sku.price).toFixed(2)}</td>
+                </th>
+                <th>Product Name</th>
+                <th>SKU</th>
+                <th>Current Price</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {skus.map((sku) => (
+                <tr key={sku.sku_id}>
+                  <td>
+                    <input
+                      type="checkbox"
+                      checked={selectedSkus.has(sku.sku_id)}
+                      onChange={() => handleSelectSku(sku.sku_id)}
+                    />
+                  </td>
+                  <td>{sku.product_name}</td>
+                  <td>{sku.seller_sku}</td>
+                  <td>${Number(sku.price).toFixed(2)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
 
         {hasNextPage && (
           <div className={styles.loadMore}>
-            <button onClick={loadMore} disabled={searching}>
+            <button onClick={loadMore} className={styles.loadMoreButton} disabled={searching}>
               {searching ? 'Loading...' : 'Load More'}
             </button>
           </div>
         )}
 
-        {totalCount > 0 && (
+        {skus.length > 0 && (
           <div className={styles.summary}>
             Found {totalCount} total SKUs with price ${searchPrice}
           </div>

@@ -11,15 +11,19 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-h1 {
+.title {
   text-align: center;
   color: #333;
   margin-bottom: 2rem;
+  font-size: 2rem;
+  font-weight: bold;
 }
 
-h2 {
+.subtitle {
   color: #444;
   margin-bottom: 1.5rem;
+  font-size: 1.5rem;
+  font-weight: 600;
 }
 
 .searchForm {
@@ -33,12 +37,12 @@ h2 {
   margin-bottom: 1.5rem;
 }
 
-.inputGroup label {
+.label {
   min-width: 120px;
   color: #555;
 }
 
-.inputGroup input {
+.input {
   flex: 1;
   padding: 0.5rem;
   border: 1px solid #ddd;
@@ -46,7 +50,7 @@ h2 {
   font-size: 1rem;
 }
 
-.inputGroup button {
+.button {
   padding: 0.5rem 1rem;
   background: #007bff;
   color: white;
@@ -56,11 +60,11 @@ h2 {
   transition: background 0.2s;
 }
 
-.inputGroup button:hover:not(:disabled) {
+.button:hover:not(:disabled) {
   background: #0056b3;
 }
 
-.inputGroup button:disabled {
+.button:disabled {
   background: #ccc;
   cursor: not-allowed;
 }
@@ -107,7 +111,7 @@ h2 {
   margin-top: 1.5rem;
 }
 
-.loadMore button {
+.loadMoreButton {
   padding: 0.75rem 2rem;
   background: #6c757d;
   color: white;
@@ -117,11 +121,11 @@ h2 {
   transition: background 0.2s;
 }
 
-.loadMore button:hover:not(:disabled) {
+.loadMoreButton:hover:not(:disabled) {
   background: #5a6268;
 }
 
-.loadMore button:disabled {
+.loadMoreButton:disabled {
   background: #ccc;
   cursor: not-allowed;
 }
