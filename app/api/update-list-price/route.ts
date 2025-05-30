@@ -111,8 +111,8 @@ export async function POST(request: NextRequest) {
         product_id: productId,
         skus: [{
           id: skuId,
-          original_price: listPrice,
-          sale_price: listPrice
+          sale_price: listPrice,
+          tax_exclusive_price: listPrice
         }]
       })
     })
@@ -120,12 +120,12 @@ export async function POST(request: NextRequest) {
     const updateData = await updateResponse.json()
     console.log('Update response:', JSON.stringify(updateData, null, 2))
     
-    if (!updateResponse.ok) {
+    if (!updateResponse.ok || updateData.code !== 0) {
       return NextResponse.json({
         success: false,
-        error: 'Failed to update price',
+        error: updateData.message || 'Failed to update price',
         details: updateData
-      }, { status: updateResponse.status })
+      }, { status: updateResponse.status || 400 })
     }
     
     return NextResponse.json({

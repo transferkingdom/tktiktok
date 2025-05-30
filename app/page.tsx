@@ -557,22 +557,28 @@ Page will reload to show authorized state.`)
               
               <h4 className="text-lg font-bold mt-4">Varyantlar ({product.skus?.length || 0})</h4>
               <div className="space-y-4 mt-4">
-                {product.skus?.map((sku: any) => (
-                  <ProductVariant
-                    key={sku.id}
-                    sku={{
-                      id: sku.id,
-                      seller_sku: sku.seller_sku,
-                      title: sku.sales_attributes?.map((attr: any) => `${attr.name}: ${attr.value_name}`).join(', ') || sku.seller_sku,
-                      price: {
-                        original: sku.price?.original_price || '0',
-                        sale: sku.price?.sale_price || sku.price?.original_price || '0'
-                      },
-                      stock: sku.stock_infos?.[0]?.available_stock || 0
-                    }}
-                    productId={product.id}
-                  />
-                ))}
+                {product.skus?.map((sku: any) => {
+                  const variantTitle = sku.sales_attributes?.map((attr: any) => 
+                    `${attr.name}: ${attr.value_name}`
+                  ).join(', ') || sku.seller_sku;
+
+                  return (
+                    <ProductVariant
+                      key={sku.id}
+                      sku={{
+                        id: sku.id,
+                        seller_sku: sku.seller_sku,
+                        title: variantTitle,
+                        price: {
+                          original: sku.price?.sale_price || '0',
+                          sale: sku.price?.sale_price || '0'
+                        },
+                        stock: sku.inventory?.[0]?.quantity || 0
+                      }}
+                      productId={product.id}
+                    />
+                  );
+                })}
               </div>
             </div>
           )}
