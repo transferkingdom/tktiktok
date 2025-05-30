@@ -11,6 +11,7 @@ interface Variant {
   id: string;
   seller_sku: string;
   title: string;
+  value_name?: string;
   price: Price;
   inventory: number;
 }
@@ -44,6 +45,12 @@ export default function ProductTable({
   const [newPrice, setNewPrice] = useState('');
   const [loading, setLoading] = useState(false);
   
+  // Extract value_name from variant title
+  const getValueName = (title: string): string => {
+    const match = title.match(/:\s*([^,]+)(?:,|$)/);
+    return match ? match[1].trim() : title;
+  };
+
   // Handle checkbox changes
   const handleSelect = (productId: string, checked: boolean) => {
     const newSelected = new Set(selectedItems);
@@ -68,7 +75,8 @@ export default function ProductTable({
       const product = products.find(p => p.id === productId);
       if (product) {
         product.variants.forEach(variant => {
-          if (variant.title.includes(targetVariant)) {
+          const valueName = getValueName(variant.title);
+          if (valueName.includes(targetVariant)) {
             updates.push({
               productId: product.id,
               skuId: variant.id,
@@ -109,37 +117,57 @@ export default function ProductTable({
       <table className={styles.table}>
         <thead>
           <tr>
-            <th>Select</th>
+            <th className={styles.checkboxCell}>
+              <input
+                type="checkbox"
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  if (checked) {
+                    setSelectedItems(new Set(products.map(p => p.id)));
+                  } else {
+                    setSelectedItems(new Set());
+                  }
+                }}
+                checked={selectedItems.size === products.length && products.length > 0}
+              />
+            </th>
             <th>Product Name</th>
             <th>Status</th>
             <th>Last Updated</th>
-            <th>Variants</th>
+            <th>SKU</th>
+            <th>Size/Variant</th>
+            <th>Price</th>
+            <th>Stock</th>
           </tr>
         </thead>
         <tbody>
           {products.map(product => (
-            <tr key={product.id}>
-              <td>
-                <input
-                  type="checkbox"
-                  checked={selectedItems.has(product.id)}
-                  onChange={(e) => handleSelect(product.id, e.target.checked)}
-                />
-              </td>
-              <td>{product.name}</td>
-              <td>{product.status}</td>
-              <td>{new Date(product.update_time * 1000).toLocaleString()}</td>
-              <td>
-                <ul className={styles.variantList}>
-                  {product.variants.map(variant => (
-                    <li key={variant.id}>
-                      {variant.title} - {variant.price.currency} {variant.price.sale} 
-                      {variant.inventory !== undefined && ` (Stock: ${variant.inventory})`}
-                    </li>
-                  ))}
-                </ul>
-              </td>
-            </tr>
+            product.variants.map((variant, variantIndex) => (
+              <tr key={`${product.id}-${variant.id}`} className={variantIndex === 0 ? styles.firstVariant : ''}>
+                {variantIndex === 0 && (
+                  <>
+                    <td className={styles.checkboxCell} rowSpan={product.variants.length}>
+                      <input
+                        type="checkbox"
+                        checked={selectedItems.has(product.id)}
+                        onChange={(e) => handleSelect(product.id, e.target.checked)}
+                      />
+                    </td>
+                    <td rowSpan={product.variants.length}>{product.name}</td>
+                    <td rowSpan={product.variants.length}>{product.status}</td>
+                    <td rowSpan={product.variants.length}>
+                      {new Date(product.update_time * 1000).toLocaleString()}
+                    </td>
+                  </>
+                )}
+                <td>{variant.seller_sku}</td>
+                <td>{getValueName(variant.title)}</td>
+                <td>
+                  {variant.price.currency} {variant.price.sale}
+                </td>
+                <td>{variant.inventory}</td>
+              </tr>
+            ))
           ))}
         </tbody>
       </table>
@@ -157,12 +185,12 @@ export default function ProductTable({
 
       <div className={styles.updateForm}>
         <div>
-          <label>Variant Name:</label>
+          <label>Size/Variant:</label>
           <input
             type="text"
             value={targetVariant}
             onChange={(e) => setTargetVariant(e.target.value)}
-            placeholder={'Example: Unisex - S & M ( 10" )'}
+            placeholder="Enter size or variant (e.g. S, M, L)"
           />
         </div>
         <div>
@@ -171,7 +199,7 @@ export default function ProductTable({
             type="number"
             value={newPrice}
             onChange={(e) => setNewPrice(e.target.value)}
-            placeholder="Example: 8.00"
+            placeholder="Enter new price"
             step="0.01"
           />
         </div>
