@@ -197,15 +197,23 @@ export async function POST(request: NextRequest) {
         }).filter(Boolean) || []
       )
 
-      // Add matching SKUs from this page to our results
-      matchingSkus.push(...pageSkus)
+      // Add matching SKUs from this page to our results, but only up to MAX_RESULTS
+      const remainingSlots = MAX_RESULTS - matchingSkus.length
+      const skusToAdd = pageSkus.slice(0, remainingSlots)
+      matchingSkus.push(...skusToAdd)
+
+      // If we've reached MAX_RESULTS, stop searching
+      if (matchingSkus.length >= MAX_RESULTS) {
+        hasNextPage = false
+        break
+      }
 
       // Update pagination info for next iteration
       hasNextPage = !!productsData.data.next_page_token
       currentPageToken = productsData.data.next_page_token || ''
 
       // Log progress
-      console.log(`Found ${pageSkus.length} matching SKUs on current page. Total: ${matchingSkus.length}`)
+      console.log(`Found ${skusToAdd.length} matching SKUs on current page. Total: ${matchingSkus.length}`)
       
       // Optional: Add a small delay to avoid rate limiting
       if (hasNextPage && matchingSkus.length < MAX_RESULTS) {
@@ -218,9 +226,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      skus: matchingSkus,
+      skus: matchingSkus.slice(0, MAX_RESULTS),
       total: matchingSkus.length,
-      hasMoreResults: hasNextPage && matchingSkus.length >= MAX_RESULTS
+      hasMoreResults: hasNextPage || matchingSkus.length > MAX_RESULTS
     })
     
   } catch (error) {
