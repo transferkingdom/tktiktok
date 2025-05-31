@@ -44,7 +44,7 @@ interface TiktokProduct {
 
 export async function POST(request: NextRequest) {
   try {
-    const { searchPrice, pageToken } = await request.json()
+    const { searchPrice } = await request.json()
     
     if (!searchPrice) {
       return NextResponse.json(
@@ -102,8 +102,10 @@ export async function POST(request: NextRequest) {
     const shopCipher = shopsData.data.shops[0].cipher
     console.log('Shop cipher:', shopCipher)
 
-    // Get products with pagination
-    const productsPath = '/product/202309/products/search'
+    // Initialize variables for pagination and results
+    let currentPageToken = '';
+    let hasNextPage = true;
+    const MAX_RESULTS = 50; // Maximum number of results to find
     const matchingSkus: Array<{
       product_id: string,
       sku_id: string,
@@ -111,109 +113,115 @@ export async function POST(request: NextRequest) {
       title: string,
       price: string,
       sale_price: string
-    }> = []
-    
-    // Get single page of products
-    const productsParams: Record<string, string> = {
-      app_key: APP_KEY,
-      timestamp: Math.floor(Date.now() / 1000).toString(),
-      shop_cipher: shopCipher,
-      page_size: '100'  // Maximum allowed by TikTok API
-    }
+    }> = [];
 
-    if (pageToken) {
-      productsParams.page_token = pageToken
-    }
+    // Search through pages until we find enough results or reach the end
+    while (hasNextPage && matchingSkus.length < MAX_RESULTS) {
+      const productsPath = '/product/202309/products/search'
+      const productsParams: Record<string, string> = {
+        app_key: APP_KEY,
+        timestamp: Math.floor(Date.now() / 1000).toString(),
+        shop_cipher: shopCipher,
+        page_size: '100'  // Maximum allowed by TikTok API
+      }
 
-    const productsBody = {
-      status: 'ACTIVATE'  // Only get active products
-    }
-    
-    console.log('Searching products with params:', productsParams)
-    const productsSign = generateSignature(productsPath, productsParams, productsBody, APP_SECRET)
-    const productsQueryParams = new URLSearchParams({
-      ...productsParams,
-      sign: productsSign,
-      access_token: accessToken
-    })
-    
-    const productsResponse = await fetch(`${baseUrl}${productsPath}?${productsQueryParams.toString()}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-TTS-Access-Token': accessToken
-      },
-      body: JSON.stringify(productsBody)
-    })
-    
-    const productsData = await productsResponse.json()
-    console.log('Products response:', JSON.stringify(productsData, null, 2))
-    
-    if (!productsResponse.ok || productsData.code !== 0) {
-      throw new Error(productsData.message || 'Failed to get products')
-    }
+      if (currentPageToken) {
+        productsParams.page_token = currentPageToken
+      }
 
-    // Format response for frontend
-    const searchPriceFloat = parseFloat(searchPrice);
-    console.log('Search price:', searchPriceFloat, typeof searchPriceFloat);
+      const productsBody = {
+        status: 'ACTIVATE'  // Only get active products
+      }
+      
+      console.log('Searching products with params:', productsParams)
+      const productsSign = generateSignature(productsPath, productsParams, productsBody, APP_SECRET)
+      const productsQueryParams = new URLSearchParams({
+        ...productsParams,
+        sign: productsSign,
+        access_token: accessToken
+      })
+      
+      const productsResponse = await fetch(`${baseUrl}${productsPath}?${productsQueryParams.toString()}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-TTS-Access-Token': accessToken
+        },
+        body: JSON.stringify(productsBody)
+      })
+      
+      const productsData = await productsResponse.json()
+      
+      if (!productsResponse.ok || productsData.code !== 0) {
+        throw new Error(productsData.message || 'Failed to get products')
+      }
 
-    const formattedSkus = productsData.data.products.flatMap((product: TiktokProduct) => 
-      product.skus?.map((sku: TiktokSku) => {
-        // Get both price values
-        const taxExclusivePrice = parseFloat(sku.price?.tax_exclusive_price || '0');
-        const salePrice = parseFloat(sku.price?.sale_price || '0');
-        
-        console.log('Comparing SKU prices:', {
-          sku: sku.seller_sku,
-          taxExclusivePrice,
-          salePrice,
-          searchPrice: searchPriceFloat
-        });
-        
-        // Compare with a small epsilon to handle floating point precision
-        const epsilon = 0.001;
-        const taxExclusivePriceMatches = Math.abs(taxExclusivePrice - searchPriceFloat) < epsilon;
-        const salePriceMatches = Math.abs(salePrice - searchPriceFloat) < epsilon;
-        
-        // Match if either price matches
-        if (taxExclusivePriceMatches || salePriceMatches) {
-          console.log('Found matching SKU:', sku.seller_sku, 'with prices:', {
+      // Format response for frontend
+      const searchPriceFloat = parseFloat(searchPrice)
+      console.log('Search price:', searchPriceFloat, typeof searchPriceFloat)
+
+      const pageSkus = productsData.data.products.flatMap((product: TiktokProduct) => 
+        product.skus?.map((sku: TiktokSku) => {
+          // Get both price values
+          const taxExclusivePrice = parseFloat(sku.price?.tax_exclusive_price || '0')
+          const salePrice = parseFloat(sku.price?.sale_price || '0')
+          
+          console.log('Comparing SKU prices:', {
+            sku: sku.seller_sku,
             taxExclusivePrice,
-            salePrice
-          });
-          return {
-            product_id: product.id,
-            sku_id: sku.id,
-            seller_sku: sku.seller_sku,
-            title: product.title || '',
-            price: sku.price?.tax_exclusive_price || '0',
-            sale_price: sku.price?.sale_price || '0'
-          };
-        }
-        return null;
-      }).filter(Boolean) || []
-    );
+            salePrice,
+            searchPrice: searchPriceFloat
+          })
+          
+          // Compare with a small epsilon to handle floating point precision
+          const epsilon = 0.001
+          const taxExclusivePriceMatches = Math.abs(taxExclusivePrice - searchPriceFloat) < epsilon
+          const salePriceMatches = Math.abs(salePrice - searchPriceFloat) < epsilon
+          
+          // Match if either price matches
+          if (taxExclusivePriceMatches || salePriceMatches) {
+            console.log('Found matching SKU:', sku.seller_sku, 'with prices:', {
+              taxExclusivePrice,
+              salePrice
+            })
+            return {
+              product_id: product.id,
+              sku_id: sku.id,
+              seller_sku: sku.seller_sku,
+              title: product.title || '',
+              price: sku.price?.tax_exclusive_price || '0',
+              sale_price: sku.price?.sale_price || '0'
+            }
+          }
+          return null
+        }).filter(Boolean) || []
+      )
 
-    console.log(`Found ${formattedSkus.length} SKUs with price ${searchPriceFloat}`);
-    console.log('Sample of matched SKUs:', formattedSkus.slice(0, 3));
+      // Add matching SKUs from this page to our results
+      matchingSkus.push(...pageSkus)
 
-    // Log raw products data for debugging
-    console.log('Sample of raw products:', productsData.data.products.slice(0, 2).map((p: TiktokProduct) => ({
-      id: p.id,
-      title: p.title,
-      skus: p.skus?.map((s: TiktokSku) => ({
-        sku: s.seller_sku,
-        price: s.price?.tax_exclusive_price
-      }))
-    })));
+      // Update pagination info for next iteration
+      hasNextPage = !!productsData.data.next_page_token
+      currentPageToken = productsData.data.next_page_token || ''
+
+      // Log progress
+      console.log(`Found ${pageSkus.length} matching SKUs on current page. Total: ${matchingSkus.length}`)
+      
+      // Optional: Add a small delay to avoid rate limiting
+      if (hasNextPage && matchingSkus.length < MAX_RESULTS) {
+        await new Promise(resolve => setTimeout(resolve, 100))
+      }
+    }
+
+    console.log(`Total matching SKUs found: ${matchingSkus.length}`)
+    console.log('Sample of matched SKUs:', matchingSkus.slice(0, 3))
 
     return NextResponse.json({
       success: true,
-      skus: formattedSkus,
-      total: formattedSkus.length,
-      hasNextPage: !!productsData.data.next_page_token,
-      nextPageToken: productsData.data.next_page_token || null
-    });
+      skus: matchingSkus,
+      total: matchingSkus.length,
+      hasMoreResults: hasNextPage && matchingSkus.length >= MAX_RESULTS
+    })
     
   } catch (error) {
     console.error('❌ Search Products Error:', error)
