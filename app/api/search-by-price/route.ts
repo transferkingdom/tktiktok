@@ -153,11 +153,17 @@ export async function POST(request: NextRequest) {
 
     // Format response for frontend
     const searchPriceFloat = parseFloat(searchPrice);
+    console.log('Search price:', searchPriceFloat, typeof searchPriceFloat);
+
     const formattedSkus = productsData.data.products.flatMap((product: TiktokProduct) => 
       product.skus?.map((sku: TiktokSku) => {
         const skuPrice = parseFloat(sku.price?.tax_exclusive_price || '0');
+        console.log('Comparing SKU price:', skuPrice, typeof skuPrice, 'for SKU:', sku.seller_sku);
+        console.log('Difference:', Math.abs(skuPrice - searchPriceFloat));
+        
         // Compare with a small epsilon to handle floating point precision
-        if (Math.abs(skuPrice - searchPriceFloat) < 0.01) {
+        if (Math.abs(skuPrice - searchPriceFloat) < 0.001) {
+          console.log('Found matching SKU:', sku.seller_sku, 'with price:', skuPrice);
           return {
             product_id: product.id,
             sku_id: sku.id,
@@ -171,6 +177,17 @@ export async function POST(request: NextRequest) {
     );
 
     console.log(`Found ${formattedSkus.length} SKUs with price ${searchPriceFloat}`);
+    console.log('Sample of matched SKUs:', formattedSkus.slice(0, 3));
+
+    // Log raw products data for debugging
+    console.log('Sample of raw products:', productsData.data.products.slice(0, 2).map((p: TiktokProduct) => ({
+      id: p.id,
+      title: p.title,
+      skus: p.skus?.map((s: TiktokSku) => ({
+        sku: s.seller_sku,
+        price: s.price?.tax_exclusive_price
+      }))
+    })));
 
     return NextResponse.json({
       success: true,
