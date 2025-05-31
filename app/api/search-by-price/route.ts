@@ -32,6 +32,7 @@ interface TiktokSku {
   seller_sku: string;
   price?: {
     tax_exclusive_price: string;
+    sale_price?: string;
   };
 }
 
@@ -108,7 +109,8 @@ export async function POST(request: NextRequest) {
       sku_id: string,
       seller_sku: string,
       title: string,
-      price: string
+      price: string,
+      sale_price: string
     }> = []
     
     // Get single page of products
@@ -157,19 +159,35 @@ export async function POST(request: NextRequest) {
 
     const formattedSkus = productsData.data.products.flatMap((product: TiktokProduct) => 
       product.skus?.map((sku: TiktokSku) => {
-        const skuPrice = parseFloat(sku.price?.tax_exclusive_price || '0');
-        console.log('Comparing SKU price:', skuPrice, typeof skuPrice, 'for SKU:', sku.seller_sku);
-        console.log('Difference:', Math.abs(skuPrice - searchPriceFloat));
+        // Get both price values
+        const taxExclusivePrice = parseFloat(sku.price?.tax_exclusive_price || '0');
+        const salePrice = parseFloat(sku.price?.sale_price || '0');
+        
+        console.log('Comparing SKU prices:', {
+          sku: sku.seller_sku,
+          taxExclusivePrice,
+          salePrice,
+          searchPrice: searchPriceFloat
+        });
         
         // Compare with a small epsilon to handle floating point precision
-        if (Math.abs(skuPrice - searchPriceFloat) < 0.001) {
-          console.log('Found matching SKU:', sku.seller_sku, 'with price:', skuPrice);
+        const epsilon = 0.001;
+        const taxExclusivePriceMatches = Math.abs(taxExclusivePrice - searchPriceFloat) < epsilon;
+        const salePriceMatches = Math.abs(salePrice - searchPriceFloat) < epsilon;
+        
+        // Match if either price matches
+        if (taxExclusivePriceMatches || salePriceMatches) {
+          console.log('Found matching SKU:', sku.seller_sku, 'with prices:', {
+            taxExclusivePrice,
+            salePrice
+          });
           return {
             product_id: product.id,
             sku_id: sku.id,
             seller_sku: sku.seller_sku,
             title: product.title || '',
-            price: sku.price?.tax_exclusive_price || '0'
+            price: sku.price?.tax_exclusive_price || '0',
+            sale_price: sku.price?.sale_price || '0'
           };
         }
         return null;
